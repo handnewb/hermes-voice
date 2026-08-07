@@ -58,8 +58,7 @@ def build_backend(cfg) -> Backend | None:
         except Exception as exc:
             errors.append(f"{name}: {exc}")
     log.error(
-        "No TTS backend available.\n  %s\n"
-        "  Install a voice with: hermes-voice voices --install %s",
+        "No TTS backend available.\n  %s\n  Install a voice with: hermes-voice voices --install %s",
         "\n  ".join(errors),
         cfg.voice or "pt_BR-faber-medium",
     )
