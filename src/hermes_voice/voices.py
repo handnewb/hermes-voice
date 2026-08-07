@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import shutil
 import tarfile
 import time
@@ -356,11 +357,25 @@ def _extract(archive: Path) -> None:
             try:
                 tf.extractall(target, filter="data")  # avoids path traversal
             except TypeError:  # Python < 3.12
-                tf.extractall(target)
+                _extract_safe(tf, target)
     archive.unlink(missing_ok=True)
     for exe in target.rglob("piper"):
         if exe.is_file():
             exe.chmod(0o755)
+
+
+def _extract_safe(tf: tarfile.TarFile, target: Path) -> None:
+    """Extract tar members safely, preventing path traversal on Python < 3.12."""
+    resolved = target.resolve()
+    for member in tf.getmembers():
+        member_path = (target / member.name).resolve()
+        if not str(member_path).startswith(str(resolved) + os.sep) and member_path != resolved:
+            raise ValueError(f"tar member escapes target: {member.name}")
+        if member.issym() or member.islnk():
+            link_target = Path(member.linkname)
+            if link_target.is_absolute() or ".." in str(link_target):
+                raise ValueError(f"unsafe symlink/link in tar: {member.name} -> {member.linkname}")
+        tf.extract(member, target)
 
 
 def install_voice(voice: Voice, root: Path, force: bool = False) -> Voice:
