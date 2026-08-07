@@ -1,0 +1,80 @@
+name: Relatar bug
+description: Algo não funciona como documentado
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Antes de tudo:** rode `hermes-voice --doctor` e cole a saída abaixo.
+        Ela resolve a maioria dos casos sozinha e economiza várias idas e vindas.
+
+        A saída do doctor **não** contém chaves de API — elas são redigidas.
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Saída de `hermes-voice --doctor`
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: voice
+    attributes:
+      label: Voz em uso
+      placeholder: "pt_BR-faber-medium, pm_alex, ..."
+
+  - type: dropdown
+    id: trigger
+    attributes:
+      label: Modo de gatilho
+      options: [wake, console, ptt, "--text"]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: tts
+    attributes:
+      label: Backend de TTS
+      options: [piper-binary, piper-python, kokoro, none, "não sei"]
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: O que você esperava
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: O que aconteceu
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Como reproduzir
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log com `--verbose`
+      render: text
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Confirmações
+      options:
+        - label: Não colei chave de API, token ou endpoint interno neste relatório
+          required: true
+        - label: Se uso EDR, verifiquei se há bloqueio antes de abrir a issue

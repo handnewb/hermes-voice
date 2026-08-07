@@ -1,0 +1,34 @@
+# CODEOWNERS -- quem e notificado e, quando a protecao de branch exigir revisao,
+# quem precisa aprovar.
+#
+# Estagio 0 (um mantenedor): este arquivo notifica, mas nao bloqueia, porque
+# aprovacao obrigatoria esta desligada. Ver GOVERNANCE.md.
+# Estagio 1: ligue "required_pull_request_reviews" e estas linhas passam a valer.
+
+# Padrao
+*                                   @handnewb
+
+# --- Caminhos protegidos: ver a tabela em GOVERNANCE.md ---
+
+# As tres garantias de privacidade vivem aqui. Mudanca pode fazer o projeto
+# transcrever o que nao devia sem que nada pareca errado.
+/src/hermes_voice/session.py        @handnewb
+/src/hermes_voice/audio.py          @handnewb
+/src/hermes_voice/echo.py           @handnewb
+
+# Vetor de ataque classico: workflow alterado pode exfiltrar segredo, publicar
+# release falso ou injetar codigo no artefato.
+/.github/workflows/                 @handnewb
+/.github/CODEOWNERS                 @handnewb
+
+# Dependencia nova e decisao de cadeia de suprimentos.
+/pyproject.toml                     @handnewb
+
+# Define o comportamento do assistente, incluindo confirmar acao destrutiva.
+/docs/persona.md                    @handnewb
+/src/hermes_voice/data/persona.md   @handnewb
+
+# Politica.
+/SECURITY.md                        @handnewb
+/GOVERNANCE.md                      @handnewb
+/docs/VOICE_LICENSING.md            @handnewb

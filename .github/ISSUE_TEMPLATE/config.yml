@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Pergunta de uso
+    url: https://github.com/handnewb/hermes-voice/discussions
+    about: Dúvidas de configuração e uso vão para Discussions.
+  - name: Vulnerabilidade de segurança
+    url: https://github.com/handnewb/hermes-voice/security/advisories/new
+    about: Não abra issue pública. Use advisory privado.

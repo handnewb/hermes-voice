@@ -1,0 +1,23 @@
+* text=auto eol=lf
+
+# PowerShell precisa de CRLF: algumas versões do Windows PowerShell falham
+# silenciosamente em script com LF. Este projeto é cross-platform, então isso
+# importa de verdade.
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+*.sh  text eol=lf
+*.py  text eol=lf
+*.md  text eol=lf
+*.yml text eol=lf
+
+# Binários
+*.onnx  binary
+*.wav   binary
+*.mp3   binary
+*.png   binary
+*.gif   binary
+
+# Não contar docs na estatística de linguagem do GitHub
+docs/*.txt linguist-documentation

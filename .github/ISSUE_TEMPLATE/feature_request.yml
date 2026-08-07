@@ -1,0 +1,28 @@
+name: Propor melhoria
+description: Sugerir funcionalidade ou mudança
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Que problema isso resolve
+      description: Descreva a situação, não a solução.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Escopo
+      options:
+        - label: Li o docs/ROADMAP.md e isso não está lá
+        - label: Isso envolve captura, retenção ou envio de áudio (exige discussão de privacidade)

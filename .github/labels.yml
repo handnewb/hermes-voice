@@ -1,0 +1,54 @@
+# Conjunto minimo de rotulos. Aplicar com:
+#   pipx run github-label-sync --access-token $GH_TOKEN --labels .github/labels.yml OWNER/REPO
+#
+# Poucos e usados vale mais que muitos e ignorados.
+
+- name: bug
+  color: d73a4a
+  description: Não funciona como documentado
+
+- name: enhancement
+  color: a2eeef
+  description: Funcionalidade ou melhoria
+
+- name: documentation
+  color: 0075ca
+  description: Só documentação
+
+- name: good first issue
+  color: 7057ff
+  description: Bom ponto de entrada para quem chega
+
+- name: help wanted
+  color: 008672
+  description: Precisa de alguém; o mantenedor não vai chegar logo
+
+# --- especificos deste projeto ---
+
+- name: audio-privacidade
+  color: b60205
+  description: Toca captura, retenção ou envio de áudio. Exige issue antes do código.
+
+- name: nao-verificado
+  color: fbca04
+  description: Área listada em docs/VERIFICATION.md como nunca executada
+
+- name: plataforma-windows
+  color: 5319e7
+  description: Específico de Windows
+
+- name: idioma
+  color: c2e0c6
+  description: Suporte a idioma além de pt-BR
+
+- name: revisao-manual
+  color: e99695
+  description: Dependabot major ou dependência de runtime; não faz auto-merge
+
+- name: aguardando-autor
+  color: d4c5f9
+  description: Precisa de resposta de quem abriu
+
+- name: fora-de-escopo
+  color: ffffff
+  description: Não vai entrar. Ver ROADMAP.md ou VOICE_LICENSING.md.

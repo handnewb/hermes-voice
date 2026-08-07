@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install ruff mypy
+      - name: Ruff (lint)
+        run: ruff check --output-format=github .
+      - name: Ruff (format)
+        run: ruff format --check --diff .
+      - name: Mypy
+        run: mypy || true   # informativo enquanto os stubs de audio nao existem
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.10", "3.12"]
+        include:
+          - os: ubuntu-latest
+            python: "3.13"
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      # A suite nao precisa de placa de som -- os imports de sounddevice sao
+      # preguicosos justamente para isto. Instalamos apenas o que os testes usam.
+      - run: pip install numpy pytest pytest-cov
+
+      - name: Testes
+        run: pytest --cov --cov-report=term-missing
+        env:
+          PYTHONPATH: src
+
+      - name: Pacote importa sem hardware de audio
+        run: python -c "import hermes_voice, hermes_voice.tts, hermes_voice.doctor; print(hermes_voice.__version__)"
+        env:
+          PYTHONPATH: src
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install build twine
+      - run: python -m build
+      - run: twine check dist/*
+      - name: Doctor roda a partir do pacote instalado
+        run: |
+          pip install dist/*.whl
+          hermes-voice --version
+          hermes-voice --doctor || true   # bloqueantes de audio sao esperados no runner
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

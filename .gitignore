@@ -1,0 +1,40 @@
+# Segredos -- confira antes do primeiro commit
+.env
+.env.*
+!.env.example
+
+# Áudio e transcrição: nunca versionar
+transcripts.log
+*.wav
+*.mp3
+*.flac
+recordings/
+
+# Modelos e binários baixados pelo setup
+voices/*.onnx
+voices/*.onnx.json
+models/
+bin/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Editores e SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

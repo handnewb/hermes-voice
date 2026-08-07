@@ -1,0 +1,88 @@
+name: Dependabot auto-merge
+
+# Por que existe: sem isto o mantenedor gasta energia em bump de versao em vez de
+# codigo, e o projeto acumula divida de dependencia. Ver GOVERNANCE.md, secao
+# "O que impede o projeto de engessar".
+#
+# Por que agendado e nao acionado por pull request:
+#
+#   O padrao difundido para isto usa pull_request_target com
+#   dependabot/fetch-metadata, porque PR do Dependabot roda com token somente
+#   leitura e sem segredos. Funciona, e e seguro DESDE QUE nao se faca checkout
+#   do codigo do PR.
+#
+#   Este projeto tem uma regra absoluta contra pull_request_target
+#   (GOVERNANCE.md). Regra absoluta que o proprio autor contorna deixa de ser
+#   regra -- e a proxima pessoa vai copiar o padrao e fazer o checkout.
+#
+#   Entao: gatilho agendado, que nunca ve codigo de PR, so metadados via API.
+#   Mais lento (roda a cada 6 h) e menos elegante. Aceitavel para bump de
+#   ferramenta de desenvolvimento.
+#
+# Escopo estreito de proposito: apenas o grupo "dev-tooling" definido em
+# dependabot.yml (ruff, mypy, pytest). Dependencia de runtime -- audio, STT, TTS
+# -- e major ficam manuais, porque quebra ali e silenciosa.
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-dev-bumps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Mesclar PRs de ferramenta de dev com CI verde
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+
+          # Grupo dev-tooling: o Dependabot nomeia a branch com esse sufixo.
+          prs=$(gh pr list --repo "$REPO" \
+                  --author "app/dependabot" --state open \
+                  --json number,headRefName,title \
+                  --jq '.[] | select(.headRefName | contains("dev-tooling")) | .number')
+
+          if [ -z "$prs" ]; then
+            echo "Nenhum PR de dev-tooling aberto."
+            exit 0
+          fi
+
+          for pr in $prs; do
+            estado=$(gh pr view "$pr" --repo "$REPO" \
+                       --json statusCheckRollup \
+                       --jq '[.statusCheckRollup[].conclusion] | unique | join(",")')
+            echo "PR #$pr -- checks: ${estado:-nenhum}"
+
+            if [ "$estado" != "SUCCESS" ]; then
+              echo "  pulando: CI nao esta inteiramente verde"
+              continue
+            fi
+            gh pr merge "$pr" --repo "$REPO" --squash --delete-branch
+            echo "  mesclado"
+          done
+
+  flag-manual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Rotular o que exige olho humano
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          prs=$(gh pr list --repo "$REPO" \
+                  --author "app/dependabot" --state open \
+                  --json number,headRefName \
+                  --jq '.[] | select(.headRefName | contains("dev-tooling") | not) | .number')
+          for pr in ${prs:-}; do
+            gh pr edit "$pr" --repo "$REPO" --add-label "revisao-manual" || true
+          done
