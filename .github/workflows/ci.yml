@@ -55,7 +55,8 @@ jobs:
 
       # A suite nao precisa de placa de som -- os imports de sounddevice sao
       # preguicosos justamente para isto. Instalamos apenas o que os testes usam.
-      - run: pip install numpy pytest pytest-cov
+      # httpx e onnxruntime sao necessarios porque pytest coleta todos os modulos.
+      - run: pip install numpy pytest pytest-cov httpx onnxruntime
 
       - name: Testes
         run: pytest --cov --cov-report=term-missing
