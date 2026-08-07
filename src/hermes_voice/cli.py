@@ -1,4 +1,4 @@
-"""Ponto de entrada do CLI."""
+"""CLI entry point."""
 
 from __future__ import annotations
 
@@ -14,47 +14,47 @@ from .ui import DIM, RESET
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="hermes-voice",
-        description="Interface de voz conversacional em pt-BR para o Hermes Agent.",
-        epilog="Comece por: hermes-voice --doctor",
+        description="Conversational voice interface in Brazilian Portuguese for Hermes Agent.",
+        epilog="Start with: hermes-voice --doctor",
     )
     p.add_argument("--version", action="version", version=f"hermes-voice {__version__}")
     p.add_argument(
-        "--doctor", action="store_true", help="diagnostica ambiente, dispositivos, modelos e chaves"
+        "--doctor", action="store_true", help="diagnose environment, devices, models and keys"
     )
     p.add_argument(
         "--probe",
         action="store_true",
-        help="com --doctor, tenta alcancar o endpoint do Hermes de verdade",
+        help="with --doctor, try reaching the Hermes endpoint for real",
     )
-    p.add_argument("--devices", action="store_true", help="lista dispositivos de audio")
-    p.add_argument("--voice", metavar="ID", help="voz do catalogo (ver: hermes-voice voices)")
-    p.add_argument("--text", action="store_true", help="entrada por teclado, sem microfone")
-    p.add_argument("--no-tts", action="store_true", help="nao sintetiza voz")
+    p.add_argument("--devices", action="store_true", help="list audio devices")
+    p.add_argument("--voice", metavar="ID", help="catalog voice (see: hermes-voice voices)")
+    p.add_argument("--text", action="store_true", help="keyboard input, no microphone")
+    p.add_argument("--no-tts", action="store_true", help="do not synthesize voice")
     p.add_argument(
         "--trigger",
         choices=["wake", "console", "ptt"],
         default="wake",
-        help="wake = microfone aberto com palavra de ativacao (default); "
-        "console = ENTER, sem hook de teclado; "
-        "ptt = segure uma tecla, instala hook global",
+        help="wake = open mic with wake word (default); "
+        "console = ENTER, no keyboard hook; "
+        "ptt = hold a key, installs global hook",
     )
     p.add_argument(
-        "--dsp", metavar="PRESET", help="sobrepoe DSP_PRESET: off, room, close, hall, intercom"
+        "--dsp", metavar="PRESET", help="override DSP_PRESET: off, room, close, hall, intercom"
     )
     p.add_argument(
         "--tts",
         metavar="BACKEND",
-        help="sobrepoe TTS_BACKEND: kokoro, piper-python, piper-binary, none",
+        help="override TTS_BACKEND: kokoro, piper-python, piper-binary, none",
     )
     p.add_argument("--verbose", "-v", action="store_true")
 
     sub = p.add_subparsers(dest="command")
-    v = sub.add_parser("voices", help="lista, instala e remove vozes")
-    v.add_argument("--install", metavar="ID", help="baixa uma voz do catalogo")
-    v.add_argument("--lang", metavar="CODIGO", help="filtra por idioma: pt, en, es, zh...")
-    v.add_argument("--languages", action="store_true", help="lista os idiomas")
-    v.add_argument("--refresh", action="store_true", help="rebusca o indice do Piper")
-    v.add_argument("--force", action="store_true", help="rebaixa mesmo se existir")
+    v = sub.add_parser("voices", help="list, install and remove voices")
+    v.add_argument("--install", metavar="ID", help="download a voice from the catalog")
+    v.add_argument("--lang", metavar="CODE", help="filter by language: pt, en, es, zh...")
+    v.add_argument("--languages", action="store_true", help="list the languages")
+    v.add_argument("--refresh", action="store_true", help="re-fetch the Piper index")
+    v.add_argument("--force", action="store_true", help="re-download even if it exists")
     return p
 
 
@@ -96,7 +96,7 @@ def main(argv: list[str] | None = None) -> int:
         speaker = build_speaker(cfg)
         if speaker is None:
             logging.getLogger("hermes").warning(
-                "Seguindo sem voz. Rode 'hermes-voice --doctor' para ver o motivo."
+                "Proceeding without voice. Run 'hermes-voice --doctor' to see why."
             )
 
     from .loops import run_console_mode, run_text_mode, run_voice_mode, run_wake_mode
@@ -147,19 +147,19 @@ def _voices(cfg: Config, args) -> int:
 
     voice = catalog.get(args.install)
     if voice is None:
-        print(f"\nVoz '{args.install}' nao existe no catalogo.")
+        print(f"\nVoice '{args.install}' doesn't exist in the catalog.")
         print(describe(catalog, root, lang=args.lang or ""))
         return 1
 
-    print(f"\nInstalando {voice.id} ({voice.engine}, {voice.language}, {voice.license}) em {root}")
+    print(f"\nInstalling {voice.id} ({voice.engine}, {voice.language}, {voice.license}) to {root}")
     try:
         install_support(root, args.force)
         install_voice(voice, root, args.force)
     except DownloadError as exc:
-        print(f"\nFalhou: {exc}")
-        print("Verifique a conexao. Nenhuma conta ou chave e necessaria.")
+        print(f"\nFailed: {exc}")
+        print("Check your connection. No account or key is required.")
         return 1
-    print(f"\nPronto. Use com: hermes-voice --voice {voice.id}\n")
+    print(f"\nReady. Use with: hermes-voice --voice {voice.id}\n")
     return 0
 
 

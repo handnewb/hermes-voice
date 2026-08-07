@@ -1,11 +1,11 @@
-"""Normalizacao de texto pt-BR antes da sintese.
+"""pt-BR text normalization before synthesis.
 
-Nenhum TTS local le "R$ 1.500,00" ou "08/06/2026" corretamente. Piper le digito
-por digito; Kokoro tropeca. O ganho de qualidade percebida aqui e maior que
-trocar de engine, e custa uma passada de regex.
+No local TTS reads "R$ 1,500.00" or "08/06/2026" correctly. Piper reads digit
+by digit; Kokoro stumbles. The perceived quality gain here is greater than
+switching engines, and costs a single regex pass.
 
-A persona ja instrui o modelo a escrever numeros por extenso. Isto e a rede de
-seguranca para quando ele escorregar -- e ele escorrega.
+The persona already instructs the model to write numbers in full. This is the
+safety net for when it slips -- and it does slip.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 
 # ---------------------------------------------------------------------------
-# Numeros por extenso
+# Number words (Brazilian Portuguese — keep as data, not translatable strings)
 # ---------------------------------------------------------------------------
 _UNIDADES = (
     "zero",
@@ -92,7 +92,7 @@ def _abaixo_de_mil(n: int) -> str:
 
 
 def numero_extenso(n: int) -> str:
-    """Cardinal em pt-BR. Suporta ate bilhoes, que cobre qualquer uso real."""
+    """Cardinal number in pt-BR. Supports up to billions, which covers any real use."""
     if n < 0:
         return f"menos {numero_extenso(-n)}"
     if n < 1000:
@@ -112,7 +112,7 @@ def numero_extenso(n: int) -> str:
                 cabeca = f"{numero_extenso(quant)} {nome}"
             if not resto:
                 return cabeca
-            # "e" antes de resto pequeno ou redondo; virgula caso contrario.
+            # "e" before small or round remainders; comma otherwise.
             ligacao = " e " if resto < 100 or resto % 100 == 0 else ", "
             return cabeca + ligacao + numero_extenso(resto)
     return str(n)
@@ -137,7 +137,7 @@ def _ordinal(n: int, feminino: bool = False) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Abreviacoes
+# Abbreviations (Brazilian Portuguese — keep as data)
 # ---------------------------------------------------------------------------
 _ABREV = {
     r"\bDr\.": "doutor",
@@ -170,7 +170,7 @@ _ABREV = {
     r"\bms\b": "milissegundos",
 }
 
-# Siglas que se leem como palavra, nao letra por letra. Sem isto o TTS soletra.
+# Acronyms read as words, not letter by letter. Without this the TTS spells them.
 _SIGLAS_PALAVRA = {
     "ISO",
     "IBGE",
@@ -189,8 +189,8 @@ _SIGLAS_PALAVRA = {
 
 
 # ---------------------------------------------------------------------------
-# Regras, em ordem. A ordem importa: dinheiro antes de decimal, decimal antes
-# de milhar, senao "R$ 1.500,00" e destruido em pedacos.
+# Rules, in order. Order matters: currency before decimal, decimal before
+# thousands separator, otherwise "R$ 1,500.00" is destroyed in pieces.
 # ---------------------------------------------------------------------------
 def _moeda(m: re.Match) -> str:
     inteiro = int(m.group(1).replace(".", "").replace(" ", ""))
@@ -260,56 +260,56 @@ def _sigla(m: re.Match) -> str:
     s = m.group(0)
     if s in _SIGLAS_PALAVRA:
         return s.capitalize()
-    return "-".join(s)  # o TTS soletra o que vem separado por hifen
+    return "-".join(s)  # TTS spells hyphen-separated content
 
 
 _REGRAS: list[tuple[re.Pattern, object]] = [
-    # dinheiro
+    # currency
     (re.compile(r"R\$\s?([\d.]+)(?:,(\d{1,2}))?"), _moeda),
     (
         re.compile(r"US\$\s?([\d.]+)(?:,(\d{1,2}))?"),
         lambda m: _moeda(m).replace("reais", "dólares").replace("real", "dólar"),
     ),
-    # percentual
+    # percentage
     (re.compile(r"([\d.]+(?:,\d+)?)\s?%"), _percentual),
-    # data
+    # date
     (re.compile(r"\b(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?\b"), _data),
-    # hora
+    # time
     (re.compile(r"\b(\d{1,2}):(\d{2})(?::\d{2})?\b"), _hora),
     (re.compile(r"\b(\d{1,2})h(\d{2})\b"), _hora),
     (re.compile(r"\b(\d{1,2})h\b"), lambda m: f"{numero_extenso(int(m.group(1)))} horas"),
     # ordinal
     (re.compile(r"\b(\d+)(º|ª)"), _ordinal_sub),
-    # decimal e milhar. Virgula primeiro; ponto com 1-2 casas tambem e decimal
-    # ("2.5"), enquanto grupos de 3 sao separador de milhar ("1.500").
+    # decimal and thousands. Comma first; period with 1-2 digits is also decimal
+    # ("2.5"), while groups of 3 are thousands separator ("1,500").
     (re.compile(r"\b([\d.]+),(\d+)\b"), _decimal),
     (re.compile(r"\b(\d+)\.(\d{1,2})\b"), _decimal),
     (re.compile(r"\b\d{1,3}(?:\.\d{3})+\b"), _milhar),
-    # inteiro solto, por ultimo
+    # standalone integer, last
     (re.compile(r"\b\d+\b"), _inteiro),
 ]
 
 
 def normalize(text: str, expand_numbers: bool = True) -> str:
-    """Prepara texto para sintese. Idempotente: normalizar duas vezes nao muda."""
+    """Prepare text for synthesis. Idempotent: normalizing twice doesn't change."""
     if not text:
         return text
 
     for padrao, troca in _ABREV.items():
         text = re.sub(padrao, troca, text)
 
-    # ORDEM IMPORTA. As regras numericas correm primeiro porque o regex de
-    # sigla engoliria o "US" de "US$" antes de a regra de moeda ver o valor.
+    # ORDER MATTERS. Numeric rules run first because the acronym regex would
+    # swallow the "US" in "US$" before the currency rule sees the value.
     if expand_numbers:
         for padrao, funcao in _REGRAS:
             text = padrao.sub(funcao, text)  # type: ignore[arg-type]
 
-    # Siglas de 2-6 maiusculas: soletradas, ou palavra quando conhecida.
+    # 2-6 uppercase acronyms: spelled out, or read as word when known.
     text = re.sub(r"\b[A-Z]{2,6}\b(?![$\d])", _sigla, text)
 
-    # simbolos soltos
+    # loose symbols
     text = text.replace("&", " e ").replace("@", " arroba ")
     text = re.sub(r"\s*/\s*", " ou ", text)
-    text = re.sub(r"(?<=\w)-(?=\w{2,})", " ", text)  # hifen entre palavras
+    text = re.sub(r"(?<=\w)-(?=\w{2,})", " ", text)  # hyphen between words
 
     return " ".join(text.split())

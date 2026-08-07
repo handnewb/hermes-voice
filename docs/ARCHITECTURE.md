@@ -1,82 +1,82 @@
-# Arquitetura
+# Architecture
 
-## O pipeline
+## The pipeline
 
 ```
-microfone (sempre aberto, frames de 32 ms)
+microphone (always open, 32 ms frames)
    │
-   ├── DORMANT ──► wake.py ────────────────► nada é transcrito aqui
-   │                  │ dispara
-   ├── LISTENING ──► vad.py ──► fim de fala ──► session.take()
+   ├── DORMANT ──► wake.py ────────────────► nothing transcribed here
+   │                  │ triggers
+   ├── LISTENING ──► vad.py ──► end of speech ──► session.take()
    │                                              │
    │                              stt.py (faster-whisper)
    │                                              │
    │                              llm.py ──► SentenceChunker
-   │                                              │ frase por frase
-   │                              tts/ ──► dsp.py ──► speaker.py ──► saída
+   │                                              │ sentence by sentence
+   │                              tts/ ──► dsp.py ──► speaker.py ──► output
    │                                                      │
    └── SPEAKING ◄────────────────────────────────────────┘
 ```
 
-## As três decisões que definem o resto
+## The three decisions that define the rest
 
-**1. Pipeline encadeado, não speech-to-speech.** Não existe modelo S2S local
-decente em pt-BR hoje. É escolha correta, não compromisso — e permite trocar
-qualquer estágio isoladamente. Reavaliar quando houver S2S multilíngue local.
+**1. Chained pipeline, not speech-to-speech.** There's no decent local S2S model
+in pt-BR today. It's the right choice, not a compromise — and it lets you swap any
+stage independently. Reassess when a multilingual local S2S exists.
 
-**2. Fatiamento por sentença em vez de esperar a resposta completa.** É a única
-otimização de latência que muda a ordem de grandeza. As outras são marginais.
+**2. Per-sentence chunking instead of waiting for the full response.** It's the
+only latency optimization that changes the order of magnitude. The others are
+marginal.
 
-**3. Máquina de estados como fonte única de verdade sobre o áudio.** Toda decisão
-de "o que fazer com este frame" está em `loops.run_wake_mode`, consultando
-`session.state`. Sem isso, as regras de privacidade ficam espalhadas por três
-módulos e ninguém consegue auditar.
+**3. State machine as the single source of truth about audio.** Every decision of
+"what to do with this frame" is in `loops.run_wake_mode`, consulting
+`session.state`. Without this, privacy rules are spread across three modules and
+nobody can audit.
 
-## Por que os imports de áudio são preguiçosos
+## Why audio imports are lazy
 
-`sounddevice` carrega `libportaudio` no import. Runner de CI e container não têm
-placa de som. Se o import fosse no topo, o pacote seria inimportável em CI e a
-suíte de testes não existiria — que é o destino da maioria dos projetos de áudio.
+`sounddevice` loads `libportaudio` on import. CI runners and containers don't have
+a sound card. If the import were at the top, the package would be unimportable in
+CI and the test suite wouldn't exist — which is the fate of most audio projects.
 
-`audio._sd()` resolve isso: o pacote importa em qualquer lugar, e o PortAudio só
-é exigido quando alguém realmente vai capturar ou tocar áudio.
+`audio._sd()` solves this: the package imports anywhere, and PortAudio is only
+required when someone actually captures or plays audio.
 
-## Contratos entre módulos
+## Contracts between modules
 
-| Fronteira | Contrato |
+| Boundary | Contract |
 |---|---|
-| `audio.FrameSource` → loop | `np.float32`, mono, 512 amostras, fila limitada que descarta o antigo |
-| loop → `wake.FrameAdapter` | `int16`; o adaptador reagrupa para o que o backend exige (512 no Porcupine, 1280 no openWakeWord) |
-| loop → `vad` | `float32`, exatamente 512 amostras (exigência do Silero v5) |
-| `session.take()` → `stt` | `float32` mono 16 kHz concatenado, mais o pico de amplitude |
-| `llm.stream()` → `SentenceChunker` | deltas de texto de tamanho arbitrário |
-| `SentenceChunker` → `tts` | trechos falantes, sem markdown |
-| backend `tts` → `speaker` | PCM `int16` little-endian em pedaços de tamanho arbitrário |
+| `audio.FrameSource` → loop | `np.float32`, mono, 512 samples, bounded queue that discards old |
+| loop → `wake.FrameAdapter` | `int16`; adapter regroups to what the backend demands (512 for Porcupine, 1280 for openWakeWord) |
+| loop → `vad` | `float32`, exactly 512 samples (Silero v5 requirement) |
+| `session.take()` → `stt` | `float32` mono 16 kHz concatenated, plus amplitude peak |
+| `llm.stream()` → `SentenceChunker` | text deltas of arbitrary size |
+| `SentenceChunker` → `tts` | speakable chunks, no markdown |
+| backend `tts` → `speaker` | PCM `int16` little-endian in chunks of arbitrary size |
 
-O contrato do `SentenceChunker` tem uma propriedade testada explicitamente: **o
-resultado não pode depender de como o stream fatia os deltas.** Deltas de 1 a 23
-caracteres precisam produzir saída idêntica. Sem isso o áudio muda conforme a
-velocidade da rede.
+The `SentenceChunker` contract has an explicitly tested property: **the result must
+not depend on how the stream slices the deltas.** Deltas of 1 to 23 characters must
+produce identical output. Without this the audio changes with network speed.
 
-## Estado, e onde ele mora
+## State, and where it lives
 
-Quatro lugares guardam estado mutável. Todos os outros módulos são sem estado.
+Four places hold mutable state. All other modules are stateless.
 
-- `session.Session` — estado da conversa, pré-roll, buffer de fala
-- `vad.SpeechGate` — histerese de fala/silêncio
-- `tts.dsp.Presence` — filtros biquad, envelope do compressor, linha de delay
-- `llm.HermesClient` — histórico da conversa
+- `session.Session` — conversation state, pre-roll, speech buffer
+- `vad.SpeechGate` — speech/silence hysteresis
+- `tts.dsp.Presence` — biquad filters, compressor envelope, delay line
+- `llm.HermesClient` — conversation history
 
-Os três primeiros têm `reset()`, e há teste verificando que `reset()` zera tudo —
-inclusive os biquads, cujo esquecimento fazia resto da frase anterior sangrar na
-seguinte.
+The first three have `reset()`, and there's a test verifying that `reset()` zeros
+everything — including the biquads, whose forgetfulness used to make residue from
+the previous sentence bleed into the next.
 
-## Onde tocar para estender
+## Where to touch to extend
 
-| Objetivo | Arquivo | Nota |
+| Goal | File | Note |
 |---|---|---|
-| Novo backend de TTS | `tts/`, mais uma entrada em `_make()` | Implemente `synth()` e `close()` |
-| Novo detector de wake word | `wake.py` | `FrameAdapter` cuida do tamanho de frame |
-| Trocar o STT | `stt.py` | Contrato: `float32` 16 kHz → `str` |
-| Novo idioma | `docs/persona.md`, `DEFAULT_HINT`, regex em `session.py`, `ABBREVIATIONS` em `llm.py` | São os quatro únicos pontos |
-| AEC | `audio.py` (loopback) e o ramo `SPEAKING` em `loops.py` | Ver ROADMAP; é o item difícil |
+| New TTS backend | `tts/`, plus an entry in `_make()` | Implement `synth()` and `close()` |
+| New wake word detector | `wake.py` | `FrameAdapter` handles frame size |
+| Swap the STT | `stt.py` | Contract: `float32` 16 kHz → `str` |
+| New language | `docs/persona.md`, `DEFAULT_HINT`, regex in `session.py`, `ABBREVIATIONS` in `llm.py` | These are the only four points |
+| AEC | `audio.py` (loopback) and the `SPEAKING` branch in `loops.py` | See ROADMAP; it's the hard item |

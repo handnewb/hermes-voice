@@ -1,43 +1,43 @@
-# Onde perguntar
+# Where to ask
 
-Escolher o canal certo economiza tempo de todos.
+Choosing the right channel saves everyone's time.
 
-| Sua situação | Vá para |
+| Your situation | Go to |
 |---|---|
-| Não funciona e você acha que é bug | [Issue de bug](../../issues/new?template=bug_report.yml) — **cole a saída de `hermes-voice --doctor`** |
-| Dúvida de configuração ou uso | [Discussions](../../discussions) |
-| Ideia ou pedido de funcionalidade | [Issue de melhoria](../../issues/new?template=feature_request.yml), depois de ler o [roadmap](docs/ROADMAP.md) |
-| Vulnerabilidade de segurança | [Advisory privado](../../security/advisories/new). **Não abra issue pública.** |
-| Quer contribuir | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
-| Quer entender como decisões são tomadas | [`GOVERNANCE.md`](GOVERNANCE.md) |
+| It doesn't work and you think it's a bug | [Bug issue](../../issues/new?template=bug_report.yml) — **paste the output of `hermes-voice --doctor`** |
+| Configuration or usage question | [Discussions](../../discussions) |
+| Idea or feature request | [Feature request issue](../../issues/new?template=feature_request.yml), after reading the [roadmap](docs/ROADMAP.md) |
+| Security vulnerability | [Private advisory](../../security/advisories/new). **Do not open a public issue.** |
+| You want to contribute | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
+| You want to understand how decisions are made | [`GOVERNANCE.md`](GOVERNANCE.md) |
 
-## Antes de abrir qualquer coisa
+## Before opening anything
 
 ```bash
 hermes-voice --doctor
 ```
 
-Verifica ambiente, áudio, transcrição, palavra de ativação, VAD, voz, endpoint e
-privacidade — com a correção sugerida de cada falha. Resolve a maioria dos casos
-sozinho, e a saída **não** contém chaves de API: os segredos são redigidos.
+Checks environment, audio, transcription, wake word, VAD, voice, endpoint, and
+privacy — with the suggested fix for each failure. Solves most cases on its own, and
+the output does **not** contain API keys: secrets are redacted.
 
-Vale checar também [`docs/VERIFICATION.md`](docs/VERIFICATION.md): partes do
-projeto ainda não foram executadas em hardware real, e talvez o que você
-encontrou já esteja listado lá.
+It's also worth checking [`docs/VERIFICATION.md`](docs/VERIFICATION.md): parts of
+the project haven't yet been executed on real hardware, and what you found may
+already be listed there.
 
-## O que ajuda numa issue
+## What helps in an issue
 
-Sistema operacional, saída do `--doctor`, modo de gatilho, voz em uso, e o log com
-`--verbose`. Sem isso a conversa vira dez mensagens para descobrir qual das dez
-coisas quebrou.
+Operating system, `--doctor` output, trigger mode, voice in use, and the log with
+`--verbose`. Without this the conversation turns into ten messages to figure out
+which of the ten things broke.
 
-## Prazo
+## Timeline
 
-Resposta em 48 h, mesmo que só para dizer que vi. Um mantenedor, projeto novo — se
-passar disso, comente na própria issue.
+Response in 48 h, even if only to say it was seen. One maintainer, new project — if
+it goes past that, comment on the issue itself.
 
-## O que não é suporte deste projeto
+## What isn't support from this project
 
-Problema no Hermes Agent em si, no seu endpoint, ou nas engines de terceiros
-(Piper, Kokoro, openWakeWord, faster-whisper). Reporte a eles. Se estiver em
-dúvida sobre a fronteira, pergunte em Discussions e eu ajudo a localizar.
+Issues with Hermes Agent itself, your endpoint, or third-party engines (Piper,
+Kokoro, openWakeWord, faster-whisper). Report to them. If you're unsure about the
+boundary, ask in Discussions and I'll help you locate it.

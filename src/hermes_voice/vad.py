@@ -1,13 +1,13 @@
-"""Deteccao de atividade de voz e de fim de fala.
+"""Voice activity detection and end-of-speech detection.
 
-Dois backends:
-  1. silero  -- ONNX de ~2 MB via onnxruntime, ~1 ms por janela de 32 ms. Robusto
-                a ruido de fundo. Precisa de frames de exatamente 512 amostras.
-  2. energy  -- limiar de RMS. Zero dependencia, funciona em sala silenciosa,
-                dispara com ar-condicionado. Existe para o sistema nunca ficar
-                inoperante se o download do Silero falhar.
+Two backends:
+  1. silero  -- ~2 MB ONNX via onnxruntime, ~1 ms per 32 ms window. Robust to
+                background noise. Requires exactly 512-sample frames.
+  2. energy  -- RMS threshold. Zero dependencies, works in a quiet room,
+                triggers with air conditioning. Exists so the system never
+                becomes inoperable if the Silero download fails.
 
-A logica de fim de fala fica em SpeechGate, comum aos dois backends.
+End-of-speech logic lives in SpeechGate, common to both backends.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ import numpy as np
 
 log = logging.getLogger("hermes.vad")
 
-FRAME = 512  # 32 ms @ 16 kHz -- exigido pelo Silero v5
+FRAME = 512  # 32 ms @ 16 kHz -- required by Silero v5
 
 
 class VadBackend(Protocol):
@@ -35,8 +35,8 @@ class SileroVad:
         path = Path(model_path) if model_path else _locate_silero()
         if path is None or not path.exists():
             raise FileNotFoundError(
-                "silero_vad.onnx nao encontrado. Instale com "
-                "'pip install silero-vad' ou aponte VAD_MODEL para o arquivo."
+                "silero_vad.onnx not found. Install with "
+                "'pip install silero-vad' or point VAD_MODEL to the file."
             )
 
         opts = ort.SessionOptions()
@@ -47,10 +47,10 @@ class SileroVad:
             str(path), sess_options=opts, providers=["CPUExecutionProvider"]
         )
         self._inputs = {i.name for i in self._sess.get_inputs()}
-        # v5 usa um tensor 'state' unico; v4 usava 'h' e 'c' separados.
+        # v5 uses a single 'state' tensor; v4 used separate 'h' and 'c'.
         self._v5 = "state" in self._inputs
         self.reset()
-        log.info("Silero VAD carregado de %s (%s).", path.name, "v5" if self._v5 else "v4")
+        log.info("Silero VAD loaded from %s (%s).", path.name, "v5" if self._v5 else "v4")
 
     def reset(self) -> None:
         if self._v5:
@@ -85,7 +85,7 @@ def _locate_silero() -> Path | None:
 
 
 class EnergyVad:
-    """Fallback por RMS. Calibra o piso de ruido nos primeiros frames."""
+    """RMS fallback. Calibrates the noise floor on the first frames."""
 
     def __init__(self, threshold: float = 0.02, calibration_frames: int = 30) -> None:
         self._threshold = threshold
@@ -114,16 +114,16 @@ def build_vad(cfg) -> VadBackend:
         except Exception as exc:
             if want == "silero":
                 raise
-            log.warning("Silero indisponivel (%s). Usando VAD por energia.", exc)
+            log.warning("Silero unavailable (%s). Using energy VAD.", exc)
     return EnergyVad(cfg.vad_energy_threshold)
 
 
 class SpeechGate:
-    """Converte probabilidade por frame em eventos de inicio e fim de fala.
+    """Converts per-frame probability into speech start and end events.
 
-    Histerese deliberada: entra em fala rapido (2 frames) e sai devagar
-    (silence_ms), porque cortar o usuario no meio de uma pausa natural e o
-    defeito mais irritante de assistente de voz.
+    Deliberate hysteresis: enters speech fast (2 frames) and exits slowly
+    (silence_ms), because cutting the user off mid-natural-pause is the most
+    annoying voice-assistant defect.
     """
 
     def __init__(
@@ -153,7 +153,7 @@ class SpeechGate:
         return self._total_speech >= self._min_speech_frames
 
     def update(self, prob: float) -> str:
-        """Retorna '', 'start' ou 'end'."""
+        """Returns '', 'start', or 'end'."""
         voiced = prob >= self.threshold
         if voiced:
             self._speech_run += 1

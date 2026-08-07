@@ -1,177 +1,175 @@
-# Voz, direitos e o que este projeto suporta
+# Voice, rights, and what this project supports
 
-Este documento existe porque a pergunta aparece sempre: *"posso usar a voz de
-[personagem / ator / dublador]?"* A resposta curta é que depende de quem é o dono
-da voz, e quase nunca é você. A resposta longa está abaixo, com os caminhos que
-funcionam.
+This document exists because the question always comes up: *"can I use the voice of
+[character / actor / voice actor]?"* The short answer is that it depends on who
+owns the voice, and it's almost never you. The long answer is below, with the paths
+that work.
 
-Não é parecer jurídico. É um resumo do terreno para você conversar com quem
-possa dar um, se for o caso.
+This is not a legal opinion. It's a summary of the landscape for you to discuss
+with someone who can give one, if needed.
 
 ---
 
-## O que vem pronto
+## What comes ready
 
-Cinco vozes pt-BR, todas gratuitas, todas com licença que permite uso comercial:
+Five pt-BR voices, all free, all with licenses permitting commercial use:
 
 ```bash
-hermes-voice voices                          # lista e mostra o que está instalado
-hermes-voice voices --install pm_alex        # baixa
-hermes-voice --voice pm_alex                 # usa
+hermes-voice voices                          # lists and shows what's installed
+hermes-voice voices --install pm_alex        # download
+hermes-voice --voice pm_alex                 # use
 ```
 
-| Voz | Engine | Licença dos pesos | Comercial |
+| Voice | Engine | Weights license | Commercial |
 |---|---|---|---|
-| `pt_BR-faber-medium` | Piper | MIT | sim |
-| `pt_BR-edresson-low` | Piper | MIT | sim |
-| `pm_alex` | Kokoro-82M | Apache-2.0 | sim |
-| `pm_santa` | Kokoro-82M | Apache-2.0 | sim |
-| `pf_dora` | Kokoro-82M | Apache-2.0 | sim |
+| `pt_BR-faber-medium` | Piper | MIT | yes |
+| `pt_BR-edresson-low` | Piper | MIT | yes |
+| `pm_alex` | Kokoro-82M | Apache-2.0 | yes |
+| `pm_santa` | Kokoro-82M | Apache-2.0 | yes |
+| `pf_dora` | Kokoro-82M | Apache-2.0 | yes |
 
-Nenhuma exige conta, chave de API ou aceitar termos de uso. Nenhuma delas imita
-uma pessoa real identificável.
+None require an account, API key, or accepting terms of use. None of them mimic a
+real identifiable person.
 
-**Kokoro não faz clonagem** — são vozes fixas de preset. Piper também não. Essa
-é uma escolha deste projeto, não uma limitação acidental.
+**Kokoro does not do cloning** — they are fixed preset voices. Piper doesn't
+either. This is a choice of this project, not an accidental limitation.
 
 ---
 
-## Se você quer um timbre diferente
+## If you want a different timbre
 
-Em ordem de esforço, e todas as três são limpas:
+In order of effort, and all three are clean:
 
-### 1. Ajuste o processamento, não a voz
+### 1. Adjust the processing, not the voice
 
-Provavelmente o caminho mais subestimado. Boa parte do que as pessoas
-identificam como "a voz do assistente de ficção científica" não está no timbre —
-está no processamento. Voz masculina grátis mais `--dsp intercom` chega
-surpreendentemente perto, e custa zero.
+Probably the most underestimated path. Much of what people identify as "the sci-fi
+assistant voice" isn't in the timbre — it's in the processing. A free male voice
+plus `--dsp intercom` gets surprisingly close, and costs zero.
 
 ```bash
 hermes-voice --voice pm_alex --dsp intercom
 ```
 
-Experimente os cinco presets antes de concluir que precisa de outra voz.
+Try the five presets before concluding you need another voice.
 
-### 2. Grave a sua própria voz
+### 2. Record your own voice
 
-Você é o titular dos direitos sobre a sua voz. Um backend de síntese por
-referência (ver adiante) sintetiza a partir de uma amostra curta sua. Isso é
-legítimo, comum, e o resultado é seu.
+You are the rights holder of your own voice. A reference-based synthesis backend
+(see below) synthesizes from a short sample of yours. This is legitimate, common,
+and the result is yours.
 
-### 3. Contrate ou licencie
+### 3. Hire or license
 
-Dublagem e locução são profissões. Locutores fazem sessões comerciais, e há um
-mercado crescente de licenciamento de voz para uso em IA — em parte, justamente
-porque a clonagem não autorizada se tornou um problema para a categoria.
+Voice acting and narration are professions. Voice actors do commercial sessions,
+and there's a growing market for voice licensing for AI use — in part, precisely
+because unauthorized cloning has become a problem for the profession.
 
-Se você quer poucas frases de sistema, é sessão curta de estúdio, não licença
-perpétua de voz sintética. Agências de locução têm bancos de vozes com
-licenciamento pronto. O resultado é exclusivo, documentado e você pode mostrar
-para qualquer pessoa.
-
----
-
-## O terreno jurídico
-
-Quatro camadas independentes. Uma autorização em uma não cobre as outras.
-
-### Direitos de personalidade
-
-No Brasil, o art. 20 do Código Civil trata do uso não autorizado da imagem e de
-atributos da pessoa. A voz é reconhecida como atributo de personalidade, e a
-proteção não depende de registro nem de a pessoa ser famosa. O art. 21 protege a
-vida privada.
-
-Nos Estados Unidos existe o *right of publicity*, que varia por estado; há
-precedentes específicos sobre imitação vocal em publicidade. Na União Europeia a
-proteção vem por direitos da personalidade nacionais somada ao GDPR.
-
-### Direito conexo do intérprete
-
-Um dublador ou locutor tem direito sobre a **interpretação**, separado do direito
-sobre o roteiro ou a obra. No Brasil isso está na Lei 9.610/98. Licenciar a obra
-não licencia a performance, e vice-versa.
-
-Consequência prática: mesmo que uma gravação esteja disponível publicamente, o
-intérprete mantém direitos sobre ela.
-
-### Voz como dado biométrico
-
-Sob a LGPD, dado biométrico é dado pessoal sensível. Voz identifica uma pessoa, e
-uma amostra de referência para clonagem é tratamento de dado sensível — o que
-exige base legal, normalmente consentimento específico e destacado. O GDPR trata
-de forma equivalente quando a voz é usada para identificar unicamente alguém.
-
-Isso vale inclusive para uso doméstico em alguns entendimentos, e certamente para
-qualquer coisa que saia da sua máquina.
-
-### Marca
-
-Nome de personagem e nome de produto podem ser marca registrada, o que é
-independente de tudo acima. Marca protege a identificação de origem: o problema é
-sugerir afiliação ou endosso que não existe. Titulares de marca famosa costumam
-defendê-la ativamente na categoria em que atuam, e há casos conhecidos de
-produtos de IA que precisaram ser renomeados por isso.
-
-Se você for renomear um fork deste projeto, vale pesquisar a marca antes de
-construir audiência. Renomear depois custa estrelas, links e SEO. Escolher bem
-antes custa nada.
+If you want a few system phrases, it's a short studio session, not a perpetual
+synthetic voice license. Voice agencies have voice banks with ready licensing.
+The result is exclusive, documented, and you can show it to anyone.
 
 ---
 
-## O que este projeto suporta, e o que não
+## The legal landscape
 
-**Suporta:** as cinco vozes do catálogo; ajuste de prosódia e DSP; síntese a
-partir de referência para voz própria ou voz que você tenha direito de usar.
+Four independent layers. Authorization in one doesn't cover the others.
 
-**Não suporta, e não será aceito em contribuição:** instruções, ferramentas ou
-funcionalidades voltadas a reproduzir a voz de uma pessoa real identificável sem
-autorização dela. Vale para dubladores, locutores, figuras públicas e pessoas
-conhecidas suas, e vale igualmente para uso doméstico.
+### Personality rights
 
-O motivo é simples: um aviso de responsabilidade transfere risco entre quem
-publica e quem usa, e não faz nada pela pessoa cuja voz está em jogo — que é a
-parte afetada e não participa de nenhum acordo.
+In Brazil, art. 20 of the Civil Code deals with unauthorized use of a person's
+image and attributes. Voice is recognized as a personality attribute, and
+protection does not depend on registration or on the person being famous. Art. 21
+protects private life.
 
-Se você decidir seguir outro caminho num fork seu, a decisão e a responsabilidade
-são suas. Este documento existe para que ela seja informada.
+In the United States there's the *right of publicity*, which varies by state;
+there are specific precedents on vocal imitation in advertising. In the European
+Union protection comes from national personality rights plus GDPR.
+
+### Performer's related rights
+
+A voice actor or narrator has rights over the **performance**, separate from the
+rights over the script or the work. In Brazil this is in Law 9,610/98. Licensing
+the work does not license the performance, and vice versa.
+
+Practical consequence: even if a recording is publicly available, the performer
+retains rights over it.
+
+### Voice as biometric data
+
+Under LGPD, biometric data is sensitive personal data. Voice identifies a person,
+and a reference sample for cloning constitutes processing of sensitive data —
+which requires a legal basis, typically specific and highlighted consent. GDPR
+treats it equivalently when voice is used to uniquely identify someone.
+
+This applies even to home use in some interpretations, and certainly to anything
+that leaves your machine.
+
+### Trademark
+
+Character names and product names can be registered trademarks, which is
+independent of everything above. Trademark protects source identification: the
+problem is suggesting affiliation or endorsement that doesn't exist. Famous
+trademark holders tend to actively defend theirs in the category they operate in,
+and there are known cases of AI products that had to be renamed because of this.
+
+If you rename a fork of this project, it's worth researching the trademark before
+building an audience. Renaming later costs stars, links, and SEO. Choosing well
+beforehand costs nothing.
 
 ---
 
-## Nota sobre XTTS-v2
+## What this project supports, and what it doesn't
 
-O XTTS-v2 é a opção open source mais conhecida para síntese por referência, e
-faz sentido considerá-lo. Dois pontos antes:
+**Supports:** the five catalog voices; prosody and DSP tuning; reference-based
+synthesis for your own voice or a voice you have the right to use.
 
-**Licença dos pesos.** O modelo é distribuído sob a Coqui Public Model License,
-que **restringe uso comercial**. Isso não é coberto pela licença Apache-2.0 deste
-projeto. Se você embarcar XTTS num produto comercial assumindo que a licença do
-repositório cobre tudo, a suposição está errada. É por isso que ele não está no
-caminho padrão.
+**Does not support, and will not be accepted in contributions:** instructions,
+tools, or features aimed at reproducing the voice of an identifiable real person
+without their authorization. This applies to voice actors, narrators, public
+figures, and people you know, and applies equally to home use.
 
-**Peso.** Exige PyTorch, na ordem de 2,5 GB, contra 63 MB do Piper e 327 MB do
-Kokoro. Vai contra o objetivo de funcionar de imediato.
+The reason is simple: a liability disclaimer transfers risk between the publisher
+and the user, and does nothing for the person whose voice is at stake — who is the
+affected party and participates in no agreement.
 
-A Coqui, empresa original, encerrou as operações; o desenvolvimento segue em fork
-comunitário. Se você quiser usar de todo modo:
+If you decide to follow another path in your own fork, the decision and the
+responsibility are yours. This document exists so that decision is informed.
+
+---
+
+## Note on XTTS-v2
+
+XTTS-v2 is the most well-known open-source option for reference-based synthesis,
+and it makes sense to consider it. Two points first:
+
+**Weights license.** The model is distributed under the Coqui Public Model License,
+which **restricts commercial use**. This is not covered by the Apache-2.0 license
+of this project. If you embed XTTS in a commercial product assuming the
+repository's license covers everything, the assumption is wrong. That's why it's
+not in the default path.
+
+**Weight.** Requires PyTorch, on the order of 2.5 GB, against 63 MB for Piper and
+327 MB for Kokoro. Goes against the goal of working out of the box.
+
+Coqui, the original company, ceased operations; development continues in a
+community fork. If you want to use it anyway:
 
 ```bash
 pip install "hermes-voice[xtts]"
-hermes-voice --tts xtts --reference minha_voz.wav
+hermes-voice --tts xtts --reference my_voice.wav
 ```
 
-O backend imprime a restrição de licença ao carregar, no terminal — não só aqui
-na documentação. Use com a sua própria voz.
+The backend prints the license restriction on load, in the terminal — not just
+here in the documentation. Use with your own voice.
 
 ---
 
-## Resumo
+## Summary
 
-| Você quer | Faça |
+| You want | Do |
 |---|---|
-| Só funcionar | Nada. `pt_BR-faber-medium` vem pronto. |
-| Melhor qualidade grátis | `hermes-voice voices --install pm_alex` |
-| Caráter, presença de sala | `--dsp room` ou `--dsp intercom` |
-| A sua própria voz | Extra `xtts`, com a ressalva de licença |
-| Um timbre específico de alguém | Contrate ou licencie. É a única via limpa. |
+| Just work | Nothing. `pt_BR-faber-medium` comes ready. |
+| Better free quality | `hermes-voice voices --install pm_alex` |
+| Character, room presence | `--dsp room` or `--dsp intercom` |
+| Your own voice | `xtts` extra, with the license caveat |
+| A specific person's timbre | Hire or license. That's the only clean path. |

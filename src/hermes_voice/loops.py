@@ -1,7 +1,7 @@
-"""Os tres loops de interacao: wake word, console e push-to-talk.
+"""The three interaction loops: wake word, console, and push-to-talk.
 
-Todos convergem em process_utterance(), para que nao exista divergencia de
-comportamento entre modos de gatilho.
+All converge on process_utterance(), so there is no behavioral divergence
+between trigger modes.
 """
 
 from __future__ import annotations
@@ -19,14 +19,14 @@ log = logging.getLogger("hermes.loop")
 
 from .ui import BOLD, DIM, RESET  # noqa: E402
 
-SILENCE_PEAK = 0.012  # abaixo disso, tratamos como microfone mudo
+SILENCE_PEAK = 0.012  # below this, treat as muted microphone
 
 
 # ---------------------------------------------------------------------------
-# Turno: STT -> Hermes -> TTS, com pipeline por sentenca
+# Turn: STT -> Hermes -> TTS, with sentence-level pipeline
 # ---------------------------------------------------------------------------
 def _for_speech(piece: str, cfg: Config | None) -> str:
-    """Limpa markdown e normaliza numeros antes de sintetizar."""
+    """Clean markdown and normalize numbers before synthesizing."""
     spoken = clean_for_speech(piece)
     if cfg is None or cfg.normalize_text:
         spoken = normalize(spoken)
@@ -63,23 +63,23 @@ def handle_turn(text: str, client: HermesClient, speaker=None, cfg: Config | Non
         print()
         log.error("%s", exc)
         if speaker:
-            speaker.say("Nao consegui alcancar o servico, senhor.")
+            speaker.say("I could not reach the service, sir.")
             speaker.end_turn()
         return ""
     finally:
         if not printed:
-            print(f"{DIM}(resposta vazia){RESET}", end="")
+            print(f"{DIM}(empty response){RESET}", end="")
         print()
 
     if speaker:
         speaker.end_turn()
     if first_audio is not None:
-        log.info("Primeiro audio em %.0f ms.", first_audio)
+        log.info("First audio in %.0f ms.", first_audio)
     return "ok"
 
 
 # ---------------------------------------------------------------------------
-# Modo texto (util para validar Hermes + TTS sem microfone)
+# Text mode (useful for validating Hermes + TTS without a microphone)
 # ---------------------------------------------------------------------------
 def run_text_mode(cfg: Config, speaker) -> None:
     client = HermesClient(
@@ -90,11 +90,11 @@ def run_text_mode(cfg: Config, speaker) -> None:
         cfg.persona(),
         cfg.history_turns,
     )
-    print(f"\n{BOLD}Modo texto.{RESET} Ctrl+C para sair.\n")
+    print(f"\n{BOLD}Text mode.{RESET} Ctrl+C to exit.\n")
     try:
         while True:
             try:
-                text = input(f"{BOLD}Voce:{RESET} ").strip()
+                text = input(f"{BOLD}You:{RESET} ").strip()
             except EOFError:
                 return
             if not text:
@@ -103,7 +103,7 @@ def run_text_mode(cfg: Config, speaker) -> None:
                 return
             if text.lower() == "/reset":
                 client.reset()
-                print(f"{DIM}Historico limpo.{RESET}")
+                print(f"{DIM}History cleared.{RESET}")
                 continue
             handle_turn(text, client, speaker, cfg)
             if speaker:
@@ -115,7 +115,7 @@ def run_text_mode(cfg: Config, speaker) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Modo voz (push-to-talk)
+# Voice mode (push-to-talk)
 # ---------------------------------------------------------------------------
 def parse_key(name: str):
     from pynput import keyboard
@@ -126,29 +126,29 @@ def parse_key(name: str):
         return special
     if len(name) == 1:
         return keyboard.KeyCode.from_char(name)
-    raise ValueError(f"Tecla desconhecida: '{name}'")
+    raise ValueError(f"Unknown key: '{name}'")
 
 
 def process_utterance(pcm, peak, stt, client, cfg: Config, speaker, strip=None) -> None:
-    """STT + turno, compartilhado pelos tres modos de gatilho."""
+    """STT + turn, shared by the three trigger modes."""
     secs = pcm.size / stt.sample_rate
     if secs < 0.25:
-        print(f"{DIM}(muito curto){RESET}")
+        print(f"{DIM}(too short){RESET}")
         return
     if peak < SILENCE_PEAK:
-        print(f"{DIM}(sem sinal no microfone -- pico {peak:.4f}){RESET}")
+        print(f"{DIM}(no signal on microphone -- peak {peak:.4f}){RESET}")
         return
 
     t0 = time.perf_counter()
     text = stt.transcribe(pcm)
-    log.info("STT: %.1f s de audio em %.0f ms.", secs, (time.perf_counter() - t0) * 1000)
+    log.info("STT: %.1f s of audio in %.0f ms.", secs, (time.perf_counter() - t0) * 1000)
     if strip is not None:
         text = strip(text)
     if not text:
-        print(f"{DIM}(nao entendi){RESET}")
+        print(f"{DIM}(didn't catch that){RESET}")
         return
 
-    print(f"{BOLD}Voce:{RESET} {text}")
+    print(f"{BOLD}You:{RESET} {text}")
     if cfg.log_transcripts:
         _append_transcript(text)
     handle_turn(text, client, speaker)
@@ -157,7 +157,7 @@ def process_utterance(pcm, peak, stt, client, cfg: Config, speaker, strip=None) 
 def _build_stack(cfg: Config):
     from .stt import Transcriber
 
-    print(f"{DIM}Carregando Whisper '{cfg.whisper_model}'...{RESET}")
+    print(f"{DIM}Loading Whisper '{cfg.whisper_model}'...{RESET}")
     stt = Transcriber(
         cfg.whisper_model,
         cfg.whisper_device,
@@ -178,13 +178,13 @@ def _build_stack(cfg: Config):
 
 
 # ---------------------------------------------------------------------------
-# Gatilho por console: sem hook global de teclado.
+# Console trigger: no global keyboard hook.
 #
-# Por que existe: um hook global (SetWindowsHookEx) e a assinatura classica de
-# keylogger. Combinado com captura de microfone e egress de rede, forma a triade
-# comportamental exata de um implante de spyware -- o que a engine de
-# engine de EDR comportamental existe para detectar. Este modo exige foco no
-# console e nao instala hook nenhum, eliminando o componente de maior risco.
+# Why it exists: a global hook (SetWindowsHookEx) has the classic signature of
+# a keylogger. Combined with microphone capture and network egress, it forms the
+# exact behavioral triad of a spyware implant -- which is what behavioral EDR
+# engines exist to detect. This mode requires console focus and installs no
+# hook, eliminating the highest-risk component.
 # ---------------------------------------------------------------------------
 def run_console_mode(cfg: Config, speaker, no_tts: bool) -> None:
     from .audio import Recorder
@@ -194,24 +194,24 @@ def run_console_mode(cfg: Config, speaker, no_tts: bool) -> None:
 
     with Recorder(stt.sample_rate, cfg.input_device, cfg.max_record_seconds) as recorder:
         print(
-            f"\n{BOLD}Hermes pronto{RESET} (modo console, sem hook de teclado)\n"
-            f"  ENTER inicia a gravacao, ENTER novamente envia.\n"
-            f"  /reset limpa o historico, /sair encerra.\n"
+            f"\n{BOLD}Hermes ready{RESET} (console mode, no keyboard hook)\n"
+            f"  ENTER starts recording, ENTER again sends.\n"
+            f"  /reset clears history, /sair exits.\n"
         )
         try:
             while True:
-                cmd = input(f"{BOLD}[ENTER] falar >{RESET} ").strip().lower()
+                cmd = input(f"{BOLD}[ENTER] speak >{RESET} ").strip().lower()
                 if cmd in {"/sair", "/quit", "/exit"}:
                     return
                 if cmd == "/reset":
                     client.reset()
-                    print(f"{DIM}Historico limpo.{RESET}")
+                    print(f"{DIM}History cleared.{RESET}")
                     continue
                 if spk and spk.speaking:
                     spk.interrupt()
 
                 recorder.start()
-                input(f"{BOLD}>> gravando... [ENTER] envia{RESET}")
+                input(f"{BOLD}>> recording... [ENTER] sends{RESET}")
                 pcm, peak = recorder.stop()
                 process_utterance(pcm, peak, stt, client, cfg, spk)
                 if spk:
@@ -220,7 +220,7 @@ def run_console_mode(cfg: Config, speaker, no_tts: bool) -> None:
             print()
         finally:
             client.close()
-    print("Encerrado.")
+    print("Done.")
 
 
 def run_voice_mode(cfg: Config, speaker, no_tts: bool) -> None:
@@ -237,10 +237,10 @@ def run_voice_mode(cfg: Config, speaker, no_tts: bool) -> None:
     def on_press(key) -> None:
         if key == ptt and not recorder.recording:
             if spk and spk.speaking:
-                spk.interrupt()  # barge-in: nova fala corta a anterior
-                print(f"\n{DIM}[interrompido]{RESET}")
+                spk.interrupt()  # barge-in: new speech cuts the previous one
+                print(f"\n{DIM}[interrupted]{RESET}")
             recorder.start()
-            print(f"\r{BOLD}>> gravando...{RESET}  ", end="", flush=True)
+            print(f"\r{BOLD}>> recording...{RESET}  ", end="", flush=True)
 
     def on_release(key) -> None:
         if key == quit_key:
@@ -255,10 +255,10 @@ def run_voice_mode(cfg: Config, speaker, no_tts: bool) -> None:
 
     with Recorder(stt.sample_rate, cfg.input_device, cfg.max_record_seconds) as recorder:
         print(
-            f"\n{BOLD}Hermes em escuta.{RESET}\n"
-            f"  Segure {BOLD}{cfg.ptt_key.upper()}{RESET} para falar, solte para enviar.\n"
-            f"  {cfg.ptt_key.upper()} durante a resposta interrompe.\n"
-            f"  {cfg.quit_key.upper()} para encerrar.\n"
+            f"\n{BOLD}Hermes listening.{RESET}\n"
+            f"  Hold {BOLD}{cfg.ptt_key.upper()}{RESET} to speak, release to send.\n"
+            f"  {cfg.ptt_key.upper()} during response interrupts.\n"
+            f"  {cfg.quit_key.upper()} to exit.\n"
         )
         listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         listener.start()
@@ -270,7 +270,7 @@ def run_voice_mode(cfg: Config, speaker, no_tts: bool) -> None:
         finally:
             listener.stop()
             client.close()
-    print("\nEncerrado.")
+    print("\nDone.")
 
 
 def _append_transcript(text: str) -> None:
@@ -283,10 +283,11 @@ def _append_transcript(text: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Modo wake word: microfone aberto, conversa contínua.
+# Wake word mode: open mic, continuous conversation.
 #
-# A palavra "Jarvis" abre uma sessao. Dentro dela voce fala normalmente, sem
-# repetir a palavra. A sessao fecha sozinha depois de FOLLOW_UP_SECONDS sem fala.
+# The word "Jarvis" opens a session. Inside it you speak normally, without
+# repeating the word. The session closes on its own after FOLLOW_UP_SECONDS
+# of silence.
 # ---------------------------------------------------------------------------
 def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
     import threading
@@ -301,8 +302,8 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
     backend = build_wake(cfg)
     if backend is None:
         log.error(
-            "Sem detector de palavra de ativacao. Instale com "
-            "pip install 'hermes-voice[wake]', ou use --trigger console."
+            "No wake word detector. Install with "
+            "pip install 'hermes-voice[wake]', or use --trigger console."
         )
         return
 
@@ -313,8 +314,9 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
 
     frame_ms = int(FRAME * 1000 / stt.sample_rate)  # 512 @ 16 kHz = 32 ms
 
-    # Com endpointing adaptativo o gate encerra no limiar CURTO; quem decide se
-    # a fala realmente acabou e o Endpointer, olhando a sintaxe do transcrito.
+    # With adaptive endpointing the gate closes at the SHORT threshold; who
+    # decides whether speech is really finished is the Endpointer, looking at
+    # the transcript syntax.
     gate_silence = cfg.endpoint_short_ms if cfg.adaptive_endpoint else cfg.silence_ms
     gate = SpeechGate(cfg.vad_threshold, gate_silence, cfg.min_speech_ms, frame_ms)
     sess = Session(stt.sample_rate, frame_ms, cfg.follow_up_seconds, cfg.max_utterance_seconds)
@@ -350,12 +352,12 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
 
     with FrameSource(stt.sample_rate, cfg.input_device, FRAME) as mic:
         print(
-            f"\n{BOLD}Hermes em escuta contínua.{RESET}\n"
-            f'  Diga {BOLD}"Jarvis"{RESET} e fale em seguida.\n'
-            f"  Depois da resposta a sessao fica aberta {cfg.follow_up_seconds:.0f}s: "
-            f"pode falar sem repetir a palavra.\n"
-            f"  Silencio de {cfg.silence_ms} ms encerra sua fala. "
-            f"Ctrl+C para sair.\n"
+            f"\n{BOLD}Hermes in continuous listening.{RESET}\n"
+            f'  Say {BOLD}"Jarvis"{RESET} and then speak.\n'
+            f"  After the response the session stays open {cfg.follow_up_seconds:.0f}s: "
+            f"you can speak without repeating the word.\n"
+            f"  {cfg.silence_ms} ms of silence ends your speech. "
+            f"Ctrl+C to exit.\n"
         )
         show()
         try:
@@ -370,7 +372,7 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
 
                 st = sess.state
 
-                # ---- DORMANT: so o detector roda. Nada e transcrito. --------
+                # ---- DORMANT: only the detector runs. Nothing is transcribed. --------
                 if st == State.DORMANT:
                     sess.keep_preroll(frame)
                     if wake.feed(_to_int16(frame)):
@@ -382,11 +384,11 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
                         show()
                     continue
 
-                # ---- SPEAKING: aguarda o audio terminar ---------------------
+                # ---- SPEAKING: wait for audio to finish ---------------------
                 if st == State.SPEAKING:
                     if not cfg.half_duplex:
-                        # Barge-in: palavra de ativacao, ou fala que a supressao
-                        # de eco confirma nao ser o proprio alto-falante.
+                        # Barge-in: wake word, or speech that echo suppression
+                        # confirms is not the speaker itself.
                         by_wake = wake.feed(_to_int16(frame))
                         by_voice = echo is not None and echo.is_user_speech(frame)
                         if by_wake or by_voice:
@@ -398,7 +400,7 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
                             vad.reset()
                             sess.begin_utterance(include_preroll=False)
                             sess.to(State.LISTENING)
-                            print(f"\n{DIM}[interrompido]{RESET}")
+                            print(f"\n{DIM}[interrupted]{RESET}")
                             show()
                             continue
                     if spk is None or not spk.speaking:
@@ -407,7 +409,7 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
                         show()
                     continue
 
-                # ---- THINKING: descarta audio ------------------------------
+                # ---- THINKING: discard audio ------------------------------
                 if st == State.THINKING:
                     if turn_done.is_set():
                         mic.drain()
@@ -416,7 +418,7 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
                         show()
                     continue
 
-                # ---- FOLLOW_UP: fala reabre sem palavra de ativacao --------
+                # ---- FOLLOW_UP: speech reopens without wake word --------
                 if st == State.FOLLOW_UP:
                     sess.keep_preroll(frame)
                     if gate.update(vad.prob(frame)) == "start":
@@ -429,18 +431,18 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
                         show()
                     continue
 
-                # ---- LISTENING: acumula até o fim da fala -------------------
+                # ---- LISTENING: accumulate until end of speech -------------------
                 sess.append(frame)
                 event = gate.update(vad.prob(frame))
 
-                # Espera estendida concedida pelo Endpointer: a frase parecia
-                # pendurada, entao ignoramos este "end" e seguimos escutando.
+                # Extended wait granted by the Endpointer: the phrase seemed
+                # dangling, so we ignore this "end" and keep listening.
                 if event == "end" and hold_frames > 0:
                     hold_frames -= 1
                     gate.reset()
                     continue
 
-                # Sondagem: transcreve o que ha e pergunta se a frase terminou.
+                # Probe: transcribe what we have and ask if the phrase is done.
                 if event == "end" and endpointer is not None and endpointer.should_probe():
                     pcm_probe, _ = sess.peek()
                     parcial = stt.transcribe(pcm_probe)
@@ -468,8 +470,8 @@ def run_wake_mode(cfg: Config, speaker, no_tts: bool) -> None:
             wake.close()
             client.close()
             if mic.dropped:
-                log.debug("%d frames descartados por fila cheia.", mic.dropped)
-    print("Encerrado.")
+                log.debug("%d frames dropped due to full queue.", mic.dropped)
+    print("Done.")
 
 
 def _to_int16(frame_float32) -> np.ndarray:

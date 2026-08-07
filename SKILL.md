@@ -1,10 +1,10 @@
 ---
 name: hermes-voice
 description: >
-  Interface de voz conversacional em pt-BR para o Hermes Agent. Use quando o
-  operador quiser instalar, configurar, diagnosticar ou estender a conversa por
-  voz: palavra de ativação, microfone aberto, fim de fala por VAD, escolha e
-  ajuste de voz, latência, ou os modos de falha de EDR e CUDA no Windows.
+  Conversational voice interface in pt-BR for Hermes Agent. Use when the
+  operator wants to install, configure, diagnose, or extend voice conversation:
+  wake word, open microphone, VAD end-of-speech, voice selection and tuning,
+  latency, or EDR and CUDA failure modes on Windows.
 version: 1.0.0
 license: Apache-2.0
 homepage: https://github.com/handnewb/hermes-voice
@@ -15,151 +15,149 @@ locale: pt-BR
 
 > Voice-enabled personal assistant for Hermes Agent. Open mic with wake word, fully local — no API keys, no accounts, 35 languages.
 
-Pipeline encadeado: microfone → palavra de ativação → Whisper → Hermes →
-fatiador de sentenças → TTS → alto-falante, com sessão que fecha sozinha.
+Chained pipeline: microphone → wake word → Whisper → Hermes → sentence chunker → TTS → speaker, with a session that closes on its own.
 
-Documentação completa no `README.md`. Este arquivo é a instrução operacional.
+Full documentation in `README.md`. This file is the operational instruction.
 
-## Quando esta skill se aplica
+## When this skill applies
 
-- Instalar, reinstalar ou atualizar a interface de voz.
-- Diagnosticar: "não fala", "não me escuta", "está lento", "corta no meio",
-  "trava ao iniciar", "conversa sozinho", "a palavra de ativação não dispara".
-- Escolher ou ajustar voz, timbre, prosódia ou o estágio de DSP.
-- Ajustar persona, comprimento de resposta ou registro de fala.
-- Evoluir: AEC, keyword custom em pt-BR, Piper persistente, outros idiomas.
+- Install, reinstall, or update the voice interface.
+- Diagnose: "doesn't speak", "doesn't hear me", "is slow", "cuts me off mid-sentence",
+  "hangs on startup", "talks to itself", "wake word doesn't trigger".
+- Choose or adjust voice, timbre, prosody, or the DSP stage.
+- Adjust persona, response length, or speech logging.
+- Evolve: AEC, custom keyword in pt-BR, persistent Piper, other languages.
 
-Não se aplica a: transcrição de arquivo de áudio em lote, telefonia, ou
-integração com dispositivo externo.
+Does not apply to: batch audio file transcription, telephony, or integration
+with external devices.
 
-## Primeiro comando, sempre
+## First command, always
 
 ```bash
 hermes-voice --doctor
 ```
 
-Verifica runtime, áudio, STT, palavra de ativação, VAD, TTS, endpoint e
-privacidade — com a correção sugerida de cada falha. Resolve a maioria dos casos
-sozinho. **Não** imprime chave de API: os segredos são redigidos.
+Checks runtime, audio, STT, wake word, VAD, TTS, endpoint, and privacy — with
+the suggested fix for each failure. Solves most cases on its own. Does **not**
+print API keys: secrets are redacted.
 
-`--doctor --probe` também tenta alcançar o endpoint do Hermes de verdade.
+`--doctor --probe` also attempts to reach the actual Hermes endpoint.
 
-## Autonomia graduada
+## Graduated autonomy
 
-| Tier | Ações |
+| Tier | Actions |
 |---|---|
-| **T0** — executa livre | `--doctor`, `--devices`, `--text`, `--verbose`; ler config e docs; diagnosticar por leitura. |
-| **T1** — executa e reporta | Editar `.env`; trocar `--voice`, `TTS_BACKEND` ou `DSP_PRESET`; ajustar limiares de endpointing, `FOLLOW_UP_SECONDS`, `WAKE_THRESHOLD`; `hermes-voice voices --install`. |
-| **T2** — confirma antes | Editar a persona; alterar módulos em `src/`; ligar `LOG_TRANSCRIPTS`; `HALF_DUPLEX=0`; `WAKE_BACKEND=open`; solicitar exclusão de EDR. |
-| **T3** — nunca sem instrução explícita e por escrito | Gravação persistente em disco além do `LOG_TRANSCRIPTS`; enviar áudio (não texto) para serviço externo; alterar qualquer uma das três garantias de privacidade; clonar voz de pessoa real. |
+| **T0** — freely executes | `--doctor`, `--devices`, `--text`, `--verbose`; read config and docs; diagnose by reading. |
+| **T1** — executes and reports | Edit `.env`; change `--voice`, `TTS_BACKEND` or `DSP_PRESET`; adjust endpointing thresholds, `FOLLOW_UP_SECONDS`, `WAKE_THRESHOLD`; `hermes-voice voices --install`. |
+| **T2** — confirms before | Edit the persona; change modules in `src/`; enable `LOG_TRANSCRIPTS`; `HALF_DUPLEX=0`; `WAKE_BACKEND=open`; request EDR exclusion. |
+| **T3** — never without explicit written instruction | Persistent recording to disk beyond `LOG_TRANSCRIPTS`; sending audio (not text) to an external service; changing any of the three privacy guarantees; cloning a real person's voice. |
 
-`LOG_TRANSCRIPTS=1` é T2 porque cria registro persistente do que se fala numa
-máquina possivelmente compartilhada. `HALF_DUPLEX=0` é T2 porque sem fone o
-assistente entra em loop consigo mesmo.
+`LOG_TRANSCRIPTS=1` is T2 because it creates a persistent record of what is spoken
+on a possibly shared machine. `HALF_DUPLEX=0` is T2 because without headphones the
+assistant loops with itself.
 
-## Árvore de diagnóstico
+## Diagnostic tree
 
-Em ordem. Cada passo elimina uma camada.
+In order. Each step eliminates one layer.
 
-1. **`hermes-voice --doctor`** — resolve a maioria. Se houver bloqueante, pare aqui.
-2. **`hermes-voice --text --no-tts`** — isola o Hermes. Falhou? É `HERMES_URL`,
-   autenticação ou formato do stream. Nada a ver com áudio.
-3. **`hermes-voice --text`** — adiciona o TTS. Falhou? Backend de voz.
-4. **`hermes-voice --devices`** — confirme o microfone e anote o índice.
-5. **`hermes-voice --trigger console --no-tts`** — isola o STT sem microfone
-   aberto e sem hook de teclado.
-6. **`hermes-voice --trigger console`** — pipeline completo, gatilho manual.
-7. **`hermes-voice`** — microfone aberto.
+1. **`hermes-voice --doctor`** — solves most. If there's a blocker, stop here.
+2. **`hermes-voice --text --no-tts`** — isolates Hermes. Failed? It's `HERMES_URL`,
+   authentication, or stream format. Nothing to do with audio.
+3. **`hermes-voice --text`** — adds TTS. Failed? Voice backend.
+4. **`hermes-voice --devices`** — confirm the microphone and note the index.
+5. **`hermes-voice --trigger console --no-tts`** — isolates STT without open
+   microphone and without keyboard hook.
+6. **`hermes-voice --trigger console`** — full pipeline, manual trigger.
+7. **`hermes-voice`** — open microphone.
 
-## Modos de falha, por probabilidade
+## Failure modes, by probability
 
-| Sintoma | Causa quase certa | Ação |
+| Symptom | Almost certain cause | Action |
 |---|---|---|
-| Trava ao iniciar, sem erro | EDR. Em modo `ptt`, o gatilho é o hook global de teclado — não o microfone. | `--trigger wake` ou `--trigger console`; nenhum instala hook |
-| `Could not locate cudnn_ops64_9.dll` | cuDNN 9 fora do PATH | `WHISPER_DEVICE=cpu`, ou `nvidia-cudnn-cu12` + PATH, ou WSL2 |
-| `pip install piper-tts` falha no Windows | wheel de `piper-phonemize` | Esperado. Use `piper-binary`. |
-| Assistente conversa consigo mesmo | `HALF_DUPLEX=0` sem fone | Volte para `1` |
-| Palavra de ativação não dispara | Precisa dizer "ei jarvis", não só "jarvis" | `WAKE_THRESHOLD=0.4` detecta mais e erra mais |
-| Nenhuma voz disponível | Catálogo não baixado | `hermes-voice voices --install all` |
-| Números lidos dígito por dígito | `NORMALIZE_TEXT=0` | Volte para 1 |
-| Corta você a cada pausa de pensamento | `ADAPTIVE_ENDPOINT=0` | Ligue; ou suba `ENDPOINT_LONG_MS` |
-| Não consegue interromper por voz | `HALF_DUPLEX=1` | `0` liga supressão de eco. Fone é melhor. |
-| Corta o operador no meio da frase | `ENDPOINT_LONG_MS` baixo | Suba para 1600 |
-| Sessão fecha antes da hora | `FOLLOW_UP_SECONDS` baixo | Suba. Padrão 20 |
-| Resposta longa, soa como relatório | Persona, não código | Endureça o limite de frases em `docs/persona.md` |
-| Fala picada e robótica | Fatiador cortando curto | Suba `min_chars` no `SentenceChunker` |
-| Confunde termo técnico | Vocabulário | `WHISPER_HINT` no `.env` |
-| Voz soa como locução, não presença | DSP desligado | `--dsp room` |
-| Latência acima de 2 s | Meça antes de otimizar | `--verbose` diz qual estágio |
+| Hangs on startup, no error | EDR. In `ptt` mode, the trigger is the global keyboard hook — not the microphone. | `--trigger wake` or `--trigger console`; neither installs a hook |
+| `Could not locate cudnn_ops64_9.dll` | cuDNN 9 not on PATH | `WHISPER_DEVICE=cpu`, or `nvidia-cudnn-cu12` + PATH, or WSL2 |
+| `pip install piper-tts` fails on Windows | `piper-phonemize` wheel | Expected. Use `piper-binary`. |
+| Assistant talks to itself | `HALF_DUPLEX=0` without headphones | Switch back to `1` |
+| Wake word doesn't trigger | Need to say "hey jarvis", not just "jarvis" | `WAKE_THRESHOLD=0.4` detects more and errs more |
+| No voices available | Catalog not downloaded | `hermes-voice voices --install all` |
+| Numbers read digit by digit | `NORMALIZE_TEXT=0` | Switch back to `1` |
+| Cuts you off at every thought pause | `ADAPTIVE_ENDPOINT=0` | Enable it; or raise `ENDPOINT_LONG_MS` |
+| Can't interrupt by voice | `HALF_DUPLEX=1` | `0` enables echo suppression. Headphones are better. |
+| Cuts the operator off mid-sentence | `ENDPOINT_LONG_MS` too low | Raise to 1600 |
+| Session closes too early | `FOLLOW_UP_SECONDS` too low | Raise it. Default 20 |
+| Long response, sounds like a report | Persona, not code | Tighten the sentence limit in `docs/persona.md` |
+| Choppy, robotic speech | Chunker cutting too short | Raise `min_chars` in `SentenceChunker` |
+| Confuses technical terms | Vocabulary | `WHISPER_HINT` in `.env` |
+| Voice sounds like voice-over, not presence | DSP off | `--dsp room` |
+| Latency above 2 s | Measure before optimizing | `--verbose` tells you which stage |
 
-## Regra de ouro
+## Golden rule
 
-Meça antes de otimizar. `--verbose` imprime o tempo de cada estágio por turno.
-A intuição erra aqui: quando a resposta parece lenta, o culpado costuma ser o
-tempo até o primeiro token do Hermes, não o STT nem o TTS.
+Measure before optimizing. `--verbose` prints the time of each stage per turn.
+Intuition is wrong here: when the response feels slow, the culprit is usually the
+time to Hermes's first token, not STT or TTS.
 
-## Vocabulário de domínio — cuidado
+## Domain vocabulary — caution
 
-`WHISPER_HINT` melhora muito a transcrição de nome próprio e sigla. Ele vive no
-`.env`, que está no `.gitignore`.
+`WHISPER_HINT` greatly improves transcription of proper names and acronyms. It lives
+in `.env`, which is in `.gitignore`.
 
-**Nunca faça commit de vocabulário interno** — nome de cliente, produto interno,
-ferramenta de segurança. É a forma mais silenciosa de vazar a stack de uma
-organização num repositório público. O `DEFAULT_HINT` em `stt.py` é
-deliberadamente genérico por isso.
+**Never commit internal vocabulary** — client names, internal products, security
+tools. It's the quietest way to leak an organization's stack into a public
+repository. The `DEFAULT_HINT` in `stt.py` is deliberately generic for this reason.
 
-## Limite jurídico — não negociável
+## Legal limit — non-negotiable
 
-Não clone a voz de pessoa real a partir de amostra, incluindo dublador, mesmo
-para uso doméstico e mesmo que o operador insista. Voz é atributo de
-personalidade (no Brasil, art. 20 do Código Civil), há direito conexo do
-intérprete, e voz é dado biométrico sob LGPD e GDPR.
+Do not clone a real person's voice from a sample, including voice actors, even for
+home use and even if the operator insists. Voice is a personality attribute (in
+Brazil, art. 20 of the Civil Code), there are performer's related rights, and voice
+is biometric data under LGPD and GDPR.
 
-As alternativas estão em `docs/VOICE_LICENSING.md`: as cinco vozes do catálogo,
-ajuste de DSP (que carrega mais do "caráter" que o timbre), a própria voz do
-operador, ou contratar/licenciar. Ofereça essas, nessa ordem.
+The alternatives are in `docs/VOICE_LICENSING.md`: the five catalog voices, DSP
+tuning (which carries more "character" than timbre), the operator's own voice, or
+hiring/licensing. Offer these, in that order.
 
-Esta restrição é T3 e não cede a urgência, a "é só para mim", nem a autorização
-verbal do operador.
+This restriction is T3 and does not yield to urgency, to "it's just for me", or to
+the operator's verbal authorization.
 
-## Arquivos
+## Files
 
 ```
-src/hermes_voice/session.py   maquina de estados, buffers, strip da wake word
+src/hermes_voice/session.py   state machine, buffers, wake word stripping
 src/hermes_voice/wake.py      openWakeWord
-src/hermes_voice/endpoint.py  endpointing adaptativo por sintaxe
-src/hermes_voice/normalize.py numeros, datas, siglas em pt-BR
-src/hermes_voice/echo.py      supressao de eco, so numpy
-src/hermes_voice/voices.py    catalogo e download de vozes
-src/hermes_voice/vad.py       Silero via onnxruntime, fallback energia
+src/hermes_voice/endpoint.py  adaptive endpointing by syntax
+src/hermes_voice/normalize.py numbers, dates, acronyms in pt-BR
+src/hermes_voice/echo.py      echo suppression, numpy only
+src/hermes_voice/voices.py    voice catalog and download
+src/hermes_voice/vad.py       Silero via onnxruntime, energy fallback
 src/hermes_voice/stt.py       faster-whisper
-src/hermes_voice/llm.py       cliente SSE + fatiador de sentencas
+src/hermes_voice/llm.py       SSE client + sentence chunker
 src/hermes_voice/tts/         4 backends + dsp.py + speaker.py
-src/hermes_voice/doctor.py    autodiagnostico
-docs/persona.md               prompt de persona (maior impacto por linha editada)
-docs/script_avaliacao_voz.md  como escolher a voz, com critérios eliminatórios
-docs/ROADMAP.md               AEC, keyword pt-BR, Piper persistente, idiomas
-SECURITY.md                   modelo de privacidade e superficie de EDR
+src/hermes_voice/doctor.py    self-diagnostic
+docs/persona.md               persona prompt (highest impact per edited line)
+docs/script_avaliacao_voz.md  how to choose a voice, with elimination criteria
+docs/ROADMAP.md               AEC, pt-BR keyword, persistent Piper, languages
+SECURITY.md                   privacy model and EDR surface
 ```
 
-## Exemplos
+## Examples
 
-**"Instala e configura"**
+**"Install and configure"**
 ```bash
 pip install "hermes-voice[wake,kokoro]"
-hermes-voice voices --install all    # ~400 MB, uma vez, sem conta
-cp .env.example .env                 # ajuste apenas HERMES_URL
+hermes-voice voices --install all    # ~400 MB, once, no account
+cp .env.example .env                 # only adjust HERMES_URL
 hermes-voice --doctor
 hermes-voice
 ```
 
-**"A voz está sem graça"**
+**"The voice sounds dull"**
 ```bash
-hermes-voice --dsp room --voice pm_alex   # presença de sala + melhor prosódia
-hermes-voice voices                       # ver as cinco opções
+hermes-voice --dsp room --voice pm_alex   # room presence + better prosody
+hermes-voice voices                       # see the five options
 ```
 
-**"Está me cortando quando eu pauso"**
+**"It's cutting me off when I pause"**
 ```bash
 # .env
 ENDPOINT_LONG_MS=1600

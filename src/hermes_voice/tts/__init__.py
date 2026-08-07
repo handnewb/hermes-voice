@@ -1,7 +1,7 @@
-"""Sintese de voz: selecao de backend, DSP e playback.
+"""Speech synthesis: backend selection, DSP, and playback.
 
-Somente engines locais, com pesos de licenca permissiva. Nenhuma chamada de rede
-em tempo de execucao, nenhuma chave de API, nenhum cadastro.
+Local engines only, with permissively licensed weights. No network calls at
+runtime, no API keys, no registration.
 """
 
 from __future__ import annotations
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
 log = logging.getLogger("hermes.tts")
 
-# Ordem do 'auto': piper-binary antes de kokoro no Windows porque o espeak-ng
-# frequentemente nao tem dados do idioma, e piper-python nao compila.
+# Order for 'auto': piper-binary before kokoro on Windows because espeak-ng
+# often lacks language data, and piper-python doesn't compile.
 if os.name == "nt":
     BACKENDS = ("piper-binary", "kokoro", "piper-python")
 else:
@@ -58,8 +58,8 @@ def build_backend(cfg) -> Backend | None:
         except Exception as exc:
             errors.append(f"{name}: {exc}")
     log.error(
-        "Nenhum backend de TTS disponivel.\n  %s\n"
-        "  Instale uma voz com: hermes-voice voices --install %s",
+        "No TTS backend available.\n  %s\n"
+        "  Install a voice with: hermes-voice voices --install %s",
         "\n  ".join(errors),
         cfg.voice or "pt_BR-faber-medium",
     )
@@ -79,14 +79,14 @@ def _make(name: str, cfg) -> Backend:
         from .piper import PiperBinary
 
         return PiperBinary(cfg.piper_binary, cfg.piper_model)
-    raise ValueError(f"backend desconhecido: {name!r} (opcoes: {', '.join(BACKENDS)})")
+    raise ValueError(f"unknown backend: {name!r} (options: {', '.join(BACKENDS)})")
 
 
 def build_speaker(cfg) -> Speaker | None:
-    from .speaker import Speaker  # carrega portaudio so quando vai tocar audio
+    from .speaker import Speaker  # loads portaudio only when about to play audio
 
     backend = build_backend(cfg)
     if backend is None:
         return None
-    log.info("TTS: '%s' a %d Hz.", backend.name, backend.sample_rate)
+    log.info("TTS: '%s' at %d Hz.", backend.name, backend.sample_rate)
     return Speaker(backend, cfg.output_device, build_dsp(cfg, backend.sample_rate))

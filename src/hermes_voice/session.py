@@ -1,20 +1,20 @@
-"""Maquina de estados da conversa contínua.
+"""Continuous conversation state machine.
 
     DORMANT ──"Jarvis"────────► LISTENING
-    LISTENING ──silencio 700ms──► THINKING ──1o audio──► SPEAKING
-    SPEAKING ──fim do audio────► FOLLOW_UP
-    FOLLOW_UP ──voz detectada──► LISTENING      (sem precisar dizer "Jarvis")
-    FOLLOW_UP ──20 s parado────► DORMANT
+    LISTENING ──700ms silence──► THINKING ──1st audio──► SPEAKING
+    SPEAKING ──audio end──────► FOLLOW_UP
+    FOLLOW_UP ──voice detected─► LISTENING      (no need to say "Jarvis")
+    FOLLOW_UP ──20 s idle─────► DORMANT
 
-O estado FOLLOW_UP e o que faz isto ser conversa e nao controle remoto: a
-palavra de ativacao abre uma sessao, e dentro dela voce fala normalmente. A
-sessao fecha sozinha quando voce para de interagir.
+The FOLLOW_UP state is what makes this conversation instead of a remote control:
+the wake word opens a session, and within it you speak normally. The session
+closes on its own when you stop interacting.
 
-Propriedades de privacidade, por construcao e nao por configuracao:
-  - Em DORMANT nada e transcrito. Os frames vao apenas para o detector de wake
-    word, que roda local e nao produz texto.
-  - O pre-roll e um deque limitado a PREROLL_MS. Memoria apenas, nunca disco.
-  - Ao voltar para DORMANT, o buffer de fala e descartado explicitamente.
+Privacy properties, by construction and not by configuration:
+  - In DORMANT nothing is transcribed. Frames go only to the wake word
+    detector, which runs locally and produces no text.
+  - The pre-roll is a deque bounded to PREROLL_MS. Memory only, never disk.
+  - When returning to DORMANT, the speech buffer is explicitly discarded.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ import numpy as np
 
 log = logging.getLogger("hermes.session")
 
-PREROLL_MS = 480  # cobre a latencia do detector sem engolir o inicio da frase
+PREROLL_MS = 480  # covers detector latency without swallowing phrase start
 
 
 class State(Enum):
@@ -40,12 +40,12 @@ class State(Enum):
     FOLLOW_UP = "follow_up"
 
 
-# O Whisper transcreve a palavra de ativacao de varias formas. Removemos do
-# inicio para nao poluir o prompt do Hermes.
+# Whisper transcribes the wake word in various forms. We strip it from the
+# beginning so it doesn't pollute the Hermes prompt.
 _WAKE_PREFIX = re.compile(
     r"^\W*(?:ei|hei|hey|oi|ol[áa]|[óô])?\W*"
     r"(?:j|g|dj|ch)[áaàeéê]?rv[iíeêáa]?[sz]?"
-    r"(?![A-Za-zÀ-ÿ])"  # fronteira: senao "Gervasio" viraria "io"
+    r"(?![A-Za-zÀ-ÿ])"  # boundary: otherwise "Gervasio" becomes "io"
     r"\W*",
     re.IGNORECASE,
 )
@@ -57,7 +57,7 @@ def strip_wake_word(text: str) -> str:
 
 
 class Session:
-    """Mantem estado, buffers e temporizadores. Nao toca em audio nem em rede."""
+    """Holds state, buffers, and timers. Never touches audio or network."""
 
     def __init__(
         self,
@@ -78,11 +78,11 @@ class Session:
         self.state = State.DORMANT
         self._entered = time.monotonic()
 
-    # -- transicao ------------------------------------------------------------
+    # -- transition ------------------------------------------------------------
     def to(self, state: State) -> None:
-        # Invariante, nao efeito de transicao: estar em DORMANT significa buffer
-        # vazio. Aplicado antes do guard de early-return de proposito -- senao
-        # to(DORMANT) a partir de DORMANT deixaria audio retido.
+        # Invariant, not transition effect: being in DORMANT means buffer is
+        # empty. Applied before the early-return guard on purpose -- otherwise
+        # to(DORMANT) from DORMANT would leave retained audio.
         if state == State.DORMANT:
             self.discard()
         if state == self.state:
@@ -116,14 +116,14 @@ class Session:
         return len(self._utterance) >= self.max_utterance_frames
 
     def peek(self) -> tuple[np.ndarray, float]:
-        """Como take(), mas sem consumir. Usado pela sondagem de endpoint."""
+        """Like take(), but without consuming. Used by endpoint probing."""
         if not self._utterance:
             return np.zeros(0, dtype=np.float32), 0.0
         pcm = np.concatenate(self._utterance).astype(np.float32, copy=False)
         return pcm, float(np.abs(pcm).max()) if pcm.size else 0.0
 
     def take(self) -> tuple[np.ndarray, float]:
-        """Devolve (pcm float32, pico) e limpa o buffer."""
+        """Returns (float32 PCM, peak) and clears the buffer."""
         chunks, self._utterance = self._utterance, []
         if not chunks:
             return np.zeros(0, dtype=np.float32), 0.0
@@ -134,12 +134,12 @@ class Session:
         self._utterance = []
         self._preroll.clear()
 
-    # -- apresentacao ---------------------------------------------------------
+    # -- display ---------------------------------------------------------
     def banner(self) -> str:
         return {
-            State.DORMANT: 'aguardando "Jarvis"',
-            State.LISTENING: "escutando...",
-            State.THINKING: "pensando...",
-            State.SPEAKING: "falando",
-            State.FOLLOW_UP: "sessao aberta -- pode falar",
+            State.DORMANT: 'waiting for "Jarvis"',
+            State.LISTENING: "listening...",
+            State.THINKING: "thinking...",
+            State.SPEAKING: "speaking",
+            State.FOLLOW_UP: "session open -- you may speak",
         }[self.state]

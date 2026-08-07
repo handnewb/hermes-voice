@@ -1,87 +1,88 @@
-# Política de segurança
+# Security Policy
 
-## Reportar vulnerabilidade
+## Reporting a vulnerability
 
-Não abra issue pública. Use
+Do not open a public issue. Use
 [Security Advisories](https://github.com/handnewb/hermes-voice/security/advisories/new).
 
-Resposta em até 5 dias úteis. Se você não tiver retorno nesse prazo, abra uma
-issue dizendo apenas que existe um advisory pendente — sem detalhes técnicos.
+Response within 5 business days. If you don't hear back within that timeframe, open
+an issue saying only that there's a pending advisory — no technical details.
 
-Divulgação coordenada: 90 dias ou até haver correção publicada, o que vier
-primeiro. Crédito no CHANGELOG se você quiser.
+Coordinated disclosure: 90 days or until a fix is published, whichever comes first.
+Credit in CHANGELOG if you want it.
 
-## Escopo
+## Scope
 
-Este projeto captura áudio de microfone continuamente, transcreve fala,
-fala com um endpoint de LLM e reproduz áudio. A superfície que interessa:
+This project continuously captures microphone audio, transcribes speech, talks to
+an LLM endpoint, and plays audio. The surface that matters:
 
-**Em escopo**
-- Vazamento de áudio ou transcrição para disco, log ou rede fora do configurado
-- Contorno das garantias de retenção descritas em "Modelo de privacidade"
-- Injeção via texto transcrito ou via resposta do LLM que resulte em execução
-- Exposição de credencial em log, mensagem de erro, saída do `--doctor` ou crash
-- Confusão de dependência, typosquatting nos extras, ou artefato de release adulterado
+**In scope**
+- Leakage of audio or transcription to disk, log, or network beyond what's configured
+- Circumvention of the retention guarantees described in "Privacy model"
+- Injection via transcribed text or via LLM response resulting in execution
+- Credential exposure in logs, error messages, `--doctor` output, or crashes
+- Dependency confusion, typosquatting in extras, or tampered release artifacts
 
-**Fora de escopo**
-- Vulnerabilidades nos serviços de terceiros (Picovoice, Azure, ElevenLabs) —
-  reporte a eles
-- Falsos positivos ou negativos da palavra de ativação (é qualidade de modelo)
-- Que o EDR bloqueie o processo (é o EDR fazendo o trabalho dele)
+**Out of scope**
+- Vulnerabilities in third-party services (Picovoice, Azure, ElevenLabs) — report
+  to them
+- Wake word false positives or negatives (model quality)
+- EDR blocking the process (EDR doing its job)
 
-## Modelo de privacidade
+## Privacy model
 
-Três garantias implementadas em `session.py`, por construção e não por
-configuração — não é possível desligá-las por engano:
+Three guarantees implemented in `session.py`, by construction and not by
+configuration — they can't be turned off by accident:
 
-1. **Em estado `DORMANT` nada é transcrito.** Os frames alimentam apenas o
-   detector de palavra de ativação, que roda local e não produz texto.
-2. **O pré-roll é um `deque` com `maxlen` fixo** de 480 ms. Há teste que alimenta
-   64 segundos de áudio contínuo e verifica que só 480 ms permanecem retidos.
-3. **Ao voltar para `DORMANT` o buffer é descartado explicitamente.** Também
-   testado, inclusive no caso de já estar em `DORMANT`.
+1. **In `DORMANT` state nothing is transcribed.** Frames only feed the wake word
+   detector, which runs locally and produces no text.
+2. **The pre-roll is a `deque` with a fixed `maxlen`** of 480 ms. There's a test
+   that feeds 64 seconds of continuous audio and verifies that only 480 ms are
+   retained.
+3. **When returning to `DORMANT` the buffer is explicitly discarded.** Also
+   tested, including the case where it was already in `DORMANT`.
 
-Nada toca o disco a menos que você defina `LOG_TRANSCRIPTS=1`, que é `0` por
-padrão e aparece como aviso no `--doctor`.
+Nothing touches disk unless you set `LOG_TRANSCRIPTS=1`, which is `0` by default
+and appears as a warning in `--doctor`.
 
-Se `TTS_BACKEND` for `azure` ou `elevenlabs`, o **texto** da resposta sai para o
-provedor. O áudio do seu microfone não sai em nenhuma configuração. Use Piper
-para manter tudo local — é o padrão.
+If `TTS_BACKEND` is `azure` or `elevenlabs`, the **text** of the response goes to
+the provider. Your microphone audio never goes out in any configuration. Use Piper
+to keep everything local — it's the default.
 
-## Credenciais
+## Credentials
 
-- `.env` está no `.gitignore`. Confira antes do primeiro commit.
-- `Config.redacted()` existe para log e para o `--doctor`. Há teste que injeta um
-  segredo conhecido e falha se ele aparecer na saída.
-- Restrinja a chave no provedor: escopo mínimo, cota de crédito, allowlist de IP.
-- Chave de terceiro com custo associado pertence a um cofre, não a um arquivo de
-  texto. O `.env` serve para desenvolvimento.
+- `.env` is in `.gitignore`. Check before the first commit.
+- `Config.redacted()` exists for logging and `--doctor`. There's a test that injects
+  a known secret and fails if it appears in the output.
+- Restrict the key at the provider: minimum scope, credit quota, IP allowlist.
+- A third-party key with associated cost belongs in a vault, not in a text file.
+  `.env` is for development.
 
-## Superfície de detecção por EDR
+## EDR detection surface
 
-Este projeto exibe três comportamentos que motores de EDR comportamental
-monitoram legitimamente. Não há nada malicioso aqui, mas o comportamento
-observável é indistinguível de spyware, e o alerta é **esperado**:
+This project exhibits three behaviors that behavioral EDR engines legitimately
+monitor for. There's nothing malicious here, but the observable behavior is
+indistinguishable from spyware, and the alert is **expected**:
 
-| Comportamento | Risco | Mitigação |
+| Behavior | Risk | Mitigation |
 |---|---|---|
-| Hook global de teclado (`pynput`, modo `ptt`) | Alto — assinatura de keylogger | `--trigger wake` ou `--trigger console`. Nenhum dos dois instala hook. |
-| Captura contínua de microfone (modo `wake`) | Médio | `--trigger console` grava só sob comando |
-| DLL nativa (ctranslate2, onnxruntime, CUDA) | Baixo | Geralmente só lentidão no startup |
+| Global keyboard hook (`pynput`, `ptt` mode) | High — keylogger signature | `--trigger wake` or `--trigger console`. Neither installs a hook. |
+| Continuous microphone capture (`wake` mode) | Medium | `--trigger console` only records on command |
+| Native DLLs (ctranslate2, onnxruntime, CUDA) | Low | Usually just startup slowness |
 
-Prefira trocar de modo de gatilho a pedir exclusão. Enfraquecer a postura do
-endpoint para rodar um assistente de voz é uma troca ruim.
+Prefer switching trigger modes over requesting exclusions. Weakening the endpoint
+posture to run a voice assistant is a bad trade.
 
-## Cadeia de suprimentos
+## Supply chain
 
-- Dependências com faixa de versão explícita no `pyproject.toml`
-- Dependabot semanal para pip e GitHub Actions
-- CodeQL com `security-extended`, semanal e em cada PR
-- Gitleaks no CI, em todo o histórico
-- Releases via Trusted Publishing (OIDC), sem token de API no repositório
+- Dependencies with explicit version ranges in `pyproject.toml`
+- Weekly Dependabot for pip and GitHub Actions
+- CodeQL with `security-extended`, weekly and on every PR
+- Gitleaks in CI, across the entire history
+- Releases via Trusted Publishing (OIDC), no API token in the repository
 
-**Pendência conhecida:** as actions estão fixadas em tag (`@v4`), não em SHA.
-Fixar em SHA é mais correto. Para fazer:
+**Known gap:** actions are pinned to tags (`@v4`), not SHAs. Pinning to SHA is
+more correct. To do:
 
 ```bash
 pipx run pin-github-action .github/workflows/*.yml

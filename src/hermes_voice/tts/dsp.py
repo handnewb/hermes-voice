@@ -1,21 +1,23 @@
-"""Estagio de "presenca": faz a voz soar como som na sala, nao como locucao.
+""""Presence" stage: makes the voice sound like room sound, not narration.
 
-Boa parte do que as pessoas identificam como voz de assistente de ficcao cientifica
-nao esta no timbre -- esta no processamento. A fala e tratada como se viesse de
-alto-falantes num ambiente, e nenhum TTS entrega isso de fabrica.
+Much of what people identify as a sci-fi assistant voice isn't in the timbre --
+it's in the processing. Speech is treated as coming from speakers in a room,
+and no TTS delivers that out of the box.
 
-Quatro estagios, na ordem em que importam:
+Four stages, in order of importance:
 
-  1. high-pass  -- corta abaixo de ~110 Hz. Remove o peso "boca no microfone"
-                   que denuncia locucao de proximidade.
-  2. compressor -- achata a dinamica. Voz calma e medida tem pouca variacao de
-                   volume; e o que da a sensacao de controle.
-  3. presence   -- realce suave em 2-4 kHz. Inteligibilidade a distancia.
-  4. reverb     -- sala pequena, curto, muito baixo. Da lugar ao som. Exagerar
-                   aqui e o erro mais comum e soa como banheiro.
+  1. high-pass  -- cuts below ~110 Hz. Removes the "mouth on mic" weight
+                   that betrays close-mic narration.
+  2. compressor -- flattens dynamics. Calm, measured voice has little volume
+                   variation; this is what gives the sense of control.
+  3. presence   -- gentle boost at 2-4 kHz. Distance intelligibility.
+  4. reverb     -- small room, short, very low. Gives the sound a place.
+                   Overdoing this is the most common mistake and sounds like
+                   a bathroom.
 
-Tudo processa em streaming, bloco por bloco, com estado continuo entre blocos --
-sem isso aparece clique nas emendas. Depende apenas de numpy.
+Everything processes in streaming, block by block, with continuous state
+across blocks -- without this, clicks appear at the seams. Depends only
+on numpy.
 """
 
 from __future__ import annotations
@@ -47,8 +49,8 @@ class PresenceConfig:
     reverb_decay: float = 0.35
     output_gain_db: float = 0.0
 
-    # Presets nomeados. 'room' e o default sensato; 'hall' exagera de proposito
-    # para voce ouvir o que cada parametro faz antes de calibrar.
+    # Named presets. 'room' is the sensible default; 'hall' exaggerates on
+    # purpose so you can hear what each parameter does before calibrating.
     @classmethod
     def preset(cls, name: str) -> PresenceConfig:
         name = (name or "off").lower()
@@ -56,9 +58,9 @@ class PresenceConfig:
             return cls(enabled=False)
         if name == "room":
             return cls(enabled=True)
-        if name == "close":  # sem sala: so peso e controle
+        if name == "close":  # no room: just weight and control
             return cls(enabled=True, reverb_mix=0.0, presence_gain_db=2.0)
-        if name == "hall":  # deliberadamente demais
+        if name == "hall":  # deliberately overdone
             return cls(
                 enabled=True,
                 reverb_ms=120.0,
@@ -66,7 +68,7 @@ class PresenceConfig:
                 reverb_decay=0.5,
                 presence_gain_db=4.0,
             )
-        if name == "intercom":  # banda estreita, tipo alto-falante de teto
+        if name == "intercom":  # narrow band, like ceiling speakers
             return cls(
                 enabled=True,
                 highpass_hz=250.0,
@@ -76,7 +78,7 @@ class PresenceConfig:
                 comp_threshold_db=-24.0,
                 comp_ratio=6.0,
             )
-        log.warning("Preset de DSP desconhecido: %r. Usando 'room'.", name)
+        log.warning("Unknown DSP preset: %r. Using 'room'.", name)
         return cls(enabled=True)
 
 
@@ -85,7 +87,7 @@ def _db(x: float) -> float:
 
 
 class _Biquad:
-    """Biquad direct-form I com estado persistente entre blocos."""
+    """Direct-form I biquad with persistent state across blocks."""
 
     __slots__ = ("_x1", "_x2", "_y1", "_y2", "a1", "a2", "b0", "b1", "b2")
 
@@ -113,8 +115,8 @@ class _Biquad:
         self._x1 = self._x2 = self._y1 = self._y2 = 0.0
 
     def process(self, x: np.ndarray) -> np.ndarray:
-        # Loop explicito: precisamos do estado exato nas bordas do bloco, senao
-        # aparece descontinuidade audivel a cada emenda.
+        # Explicit loop: we need exact state at block boundaries, otherwise
+        # an audible discontinuity appears at every splice.
         y = np.empty_like(x)
         x1, x2, y1, y2 = self._x1, self._x2, self._y1, self._y2
         b0, b1, b2, a1, a2 = self.b0, self.b1, self.b2, self.a1, self.a2
@@ -129,7 +131,7 @@ class _Biquad:
 
 
 class Presence:
-    """Aplica a cadeia em PCM int16 mono, em streaming."""
+    """Applies the chain to mono int16 PCM, in streaming."""
 
     def __init__(self, config: PresenceConfig, sample_rate: int) -> None:
         self.cfg = config
@@ -152,8 +154,8 @@ class Presence:
         self._delay = np.zeros(delay, dtype=np.float32)
         self._dpos = 0
 
-        self._odd = b""  # meio sample entre blocos, se o chunk vier impar
-        log.debug("DSP ativo a %d Hz: %s", sample_rate, config)
+        self._odd = b""  # half-sample between blocks, if chunk is odd-sized
+        log.debug("DSP active at %d Hz: %s", sample_rate, config)
 
     # -- API -----------------------------------------------------------------
     def process(self, pcm: bytes) -> bytes:
@@ -168,7 +170,7 @@ class Presence:
         return self._render(x)
 
     def flush(self) -> bytes:
-        """Cauda do reverb, para a frase nao terminar em corte seco."""
+        """Reverb tail, so the phrase doesn't end with an abrupt cut."""
         if not self.cfg.enabled or self.cfg.reverb_mix <= 0.0:
             self._odd = b""
             return b""
@@ -177,8 +179,8 @@ class Presence:
         return tail
 
     def reset(self) -> None:
-        """Zera TUDO. Os biquads tambem -- esquecer deles deixava resto da frase
-        anterior sangrando na proxima."""
+        """Resets EVERYTHING. Biquads too -- forgetting them would let the
+        previous phrase's residue bleed into the next one."""
         self._hp.reset()
         self._eq.reset()
         self._env = 0.0
@@ -186,7 +188,7 @@ class Presence:
         self._dpos = 0
         self._odd = b""
 
-    # -- interno -------------------------------------------------------------
+    # -- internal -------------------------------------------------------------
     def _render(self, x: np.ndarray) -> bytes:
         x = self._hp.process(x)
         x = self._compress(x)
@@ -198,8 +200,8 @@ class Presence:
         return (x * INT16_MAX).astype("<i2").tobytes()
 
     def _compress(self, x: np.ndarray) -> np.ndarray:
-        # Detector de envelope com attack/release separados; ganho aplicado
-        # amostra a amostra para nao criar degrau no meio do bloco.
+        # Envelope detector with separate attack/release; gain applied sample
+        # by sample to avoid creating a step inside the block.
         out = np.empty_like(x)
         env, atk, rel = self._env, self._atk, self._rel
         thresh, ratio, makeup = self._thresh, self._ratio, self._makeup
@@ -214,8 +216,9 @@ class Presence:
         return out
 
     def _reverb(self, x: np.ndarray) -> np.ndarray:
-        # Comb filter unico. Nao e reverb de verdade, e nao precisa ser: o que
-        # da sensacao de sala e uma reflexao curta e baixa, nao uma cauda densa.
+        # Single comb filter. It's not real reverb, and doesn't need to be:
+        # what gives the room feeling is a short, low reflection, not a dense
+        # tail.
         buf, n = self._delay, self._delay.size
         mix, decay = self.cfg.reverb_mix, self.cfg.reverb_decay
         out = np.empty_like(x)
@@ -239,5 +242,5 @@ def build_dsp(cfg, sample_rate: int) -> Presence | None:
         override = getattr(cfg, f"dsp_{field}", None)
         if override is not None:
             setattr(pc, field, override)
-    log.info("DSP: preset '%s' a %d Hz.", preset, sample_rate)
+    log.info("DSP: preset '%s' at %d Hz.", preset, sample_rate)
     return Presence(pc, sample_rate)

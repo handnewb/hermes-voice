@@ -1,138 +1,135 @@
-# Status de verificação
+# Verification status
 
-Este documento existe porque a diferença entre "escrito" e "verificado" costuma
-ficar implícita, e num projeto que grava áudio e baixa modelos essa diferença
-importa. Abaixo está o que foi executado, o que não foi, e onde eu apostaria que
-há problema.
+This document exists because the difference between "written" and "verified" is
+usually implicit, and in a project that records audio and downloads models, that
+difference matters. Below is what has been executed, what hasn't, and where I
+would bet there are issues.
 
-Escrito antes da primeira publicação. Atualize junto com as correções.
+Written before the first publication. Update alongside fixes.
 
 ---
 
-## Verificado por teste automatizado
+## Verified by automated testing
 
-229 testes, executados repetidamente. Nenhum exige placa de som, GPU, rede ou
-chave de API.
+229 tests, run repeatedly. None require a sound card, GPU, network, or API key.
 
-| Componente | O que foi verificado |
+| Component | What was verified |
 |---|---|
-| `llm.SentenceChunker` | Resultado idêntico para deltas de 1 a 23 caracteres; nenhum caractere perdido; `12:30`, `4.812`, `Dr.` preservados; emite antes do fim do stream |
-| `session.Session` | Ciclo completo de estados; pré-roll limitado a 480 ms após 64 s de áudio; buffer descartado ao adormecer, inclusive quando já dormia |
-| `session.strip_wake_word` | 7 variantes removidas; 9 palavras legítimas preservadas, incluindo "Gervásio" e "Java" |
-| `tts.dsp.Presence` | −12,5 dB em 80 Hz medido por FFT; continuidade de estado com erro ≤ 1 LSB em blocos de 2 a 4096 bytes; chunk ímpar nunca gera byte solto; compressor reduz dinâmica de 18× para 6,1×; saída nunca satura |
-| `echo.EchoSuppressor` | Zero falsos positivos com eco puro em 4 atrasos (20–300 ms) × 4 ganhos de sala (0,25–1,3); dispara com fala sobreposta alta |
-| `normalize` | Cardinais até milhões; moeda, data, hora, percentual, ordinal, decimal com vírgula e com ponto; idempotência; nenhum dígito remanescente |
-| `endpoint` | Classificação de 15 casos; histerese; destrava com texto estagnado; teto de sondagens |
-| `wake.matches` | Apelidos aceitos, colisões rejeitadas, tolerância limitada a 1 |
-| `config` | Redação de segredo com teste que injeta valor conhecido; `.env` não sobrescreve ambiente; extração da persona por `rsplit` |
-| Empacotamento | Wheel constrói, instala em venv limpo, entry point executa, persona viaja dentro do pacote |
+| `llm.SentenceChunker` | Identical result for deltas of 1 to 23 characters; no character lost; `12:30`, `4.812`, `Dr.` preserved; emits before end of stream |
+| `session.Session` | Full state cycle; pre-roll limited to 480 ms after 64 s of audio; buffer discarded on sleep, including when already sleeping |
+| `session.strip_wake_word` | 7 variants removed; 9 legitimate words preserved, including "Gervásio" and "Java" |
+| `tts.dsp.Presence` | −12.5 dB at 80 Hz measured by FFT; state continuity with error ≤ 1 LSB in blocks of 2 to 4096 bytes; odd chunk never generates stray byte; compressor reduces dynamics from 18× to 6.1×; output never saturates |
+| `echo.EchoSuppressor` | Zero false positives with pure echo at 4 delays (20–300 ms) × 4 room gains (0.25–1.3); triggers with loud overlapping speech |
+| `normalize` | Cardinals up to millions; currency, date, time, percentage, ordinal, decimal with comma and dot; idempotency; no remaining digits |
+| `endpoint` | Classification of 15 cases; hysteresis; unlocks with stagnant text; probe ceiling |
+| `wake.matches` | Nicknames accepted, collisions rejected, tolerance limited to 1 |
+| `config` | Secret redaction with test injecting known value; `.env` doesn't override environment; persona extraction via `rsplit` |
+| Packaging | Wheel builds, installs in clean venv, entry point executes, persona travels inside the package |
 
 ---
 
-## Verificado em hardware real (2026-08-07)
+## Verified on real hardware (2026-08-07)
 
 ### Jarvis — Windows 11, NVIDIA RTX 4060, Python 3.13.13
 
-| Componente | Resultado |
+| Component | Result |
 |---|---|
-| **Instalação** | `pip install -e ".[dev,wake,kokoro]"` — sucesso |
-| **Tests** | 229/229 passed em 1.55s |
+| **Install** | `pip install -e ".[dev,wake,kokoro]"` — success |
+| **Tests** | 229/229 passed in 1.55s |
 | **Ruff lint** | All checks passed |
 | **Ruff format** | 48 files already formatted |
-| **Doctor** | Todos os 8 grupos verdes (Runtime, Audio, STT, Wake, VAD, TTS, Hermes, Privacidade) |
-| **GPU/CUDA** | 1 device detectado |
-| **Áudio** | 11 microfones, 14 saídas |
-| **Voice catalog** | Índice do Piper parseado com sucesso (8 vozes pt-BR) |
-| **Download de vozes** | Piper (60 MB) + Kokoro (327 MB) baixados, MD5 verificado |
-| **Piper binary** | Sintetizou sem erro a 22050 Hz |
-| **DSP** | Preset 'room' aplicado, sem erro |
+| **Doctor** | All 8 groups green (Runtime, Audio, STT, Wake, VAD, TTS, Hermes, Privacy) |
+| **GPU/CUDA** | 1 device detected |
+| **Audio** | 11 microphones, 14 outputs |
+| **Voice catalog** | Piper index parsed successfully (8 pt-BR voices) |
+| **Voice download** | Piper (60 MB) + Kokoro (327 MB) downloaded, MD5 verified |
+| **Piper binary** | Synthesized without error at 22050 Hz |
+| **DSP** | Preset 'room' applied, no error |
 | **Hermes endpoint** | `--doctor --probe` → HTTP 200 |
-| **LLM pipeline** | DeepSeek respondeu em português seguindo a persona |
-| **Latência** | 1670ms até primeiro áudio (LLM + TTS) |
-| **Pipeline completo** | `--text` com LLM + Piper binary TTS + DSP → funcional |
+| **LLM pipeline** | DeepSeek responded in Portuguese following the persona |
+| **Latency** | 1670ms to first audio (LLM + TTS) |
+| **Full pipeline** | `--text` with LLM + Piper binary TTS + DSP → functional |
 
-### Mestre — Linux 6.8, Python 3.11.15, sem GPU
+### Mestre — Linux 6.8, Python 3.11.15, no GPU
 
-| Componente | Resultado |
+| Component | Result |
 |---|---|
-| **Tests** | 229/229 passed em 4.13s |
+| **Tests** | 229/229 passed in 4.13s |
 | **Ruff lint** | All checks passed |
 | **Ruff format** | 48 files already formatted |
-| **Doctor** | 4 bloqueios esperados (PortAudio, CUDA, wake, vozes — VPS headless) |
-| **Build** | sdist + wheel gerados sem erro |
+| **Doctor** | 4 expected blocks (PortAudio, CUDA, wake, voices — headless VPS) |
+| **Build** | sdist + wheel generated without error |
 
-### Gaps encontrados
+### Gaps found
 
-| Gap | Detalhe | Workaround |
+| Gap | Detail | Workaround |
 |---|---|---|
-| **Kokoro + espeak-ng no Windows** | `language "p" is not supported by the espeak backend` — espeak-ng não tem dados de pt-BR no Windows | `TTS_BACKEND=piper-binary` |
-| **`auto` backend no Windows** | Tenta Kokoro primeiro (falha no espeak-ng), cai para piper-python (não instalado em Windows), não alcança piper-binary | `TTS_BACKEND=piper-binary` explícito |
-| **Microfone aberto** | Não testado (SSH remoto, sem interação) | Aguarda teste local |
-| **Wake word real** | openWakeWord instalado mas não testado com áudio real | Aguarda teste local |
+| **Kokoro + espeak-ng on Windows** | `language "p" is not supported by the espeak backend` — espeak-ng has no pt-BR data on Windows | `TTS_BACKEND=piper-binary` |
+| **`auto` backend on Windows** | Tries Kokoro first (fails on espeak-ng), falls to piper-python (not installed on Windows), never reaches piper-binary | Explicit `TTS_BACKEND=piper-binary` |
+| **Open microphone** | Not tested (remote SSH, no interaction) | Awaiting local test |
+| **Real wake word** | openWakeWord installed but not tested with real audio | Awaiting local test |
 
-### O que NÃO foi testado (ainda)
+### What was NOT tested (yet)
 
-- Microfone aberto com wake word (`hermes-voice` sem `--text`)
-- Barge-in / supressão de eco com hardware real
-- Endpointing adaptativo com áudio real
-- Modo `ptt` (hook de teclado + EDR)
-- macOS (não disponível)
-- Piper Python backend (não instalável em Windows)
-
----
-
-## Onde eu apostaria que está o problema
-
-Em ordem de probabilidade.
-
-**1. Latência da sondagem de endpoint bloqueia o loop de áudio.**
-A sondagem chama `stt.transcribe()` de forma síncrona na thread que consome
-frames. Em GPU são ~150 ms, aceitável. Em CPU podem ser 1–3 s, e a fila do
-`FrameSource` tem 64 frames (~2 s) e descarta os antigos quando enche. Ou seja:
-**em CPU, a sondagem provavelmente engole áudio.** A correção é rodar a sondagem
-numa thread, ou desligar `ADAPTIVE_ENDPOINT` quando `WHISPER_DEVICE=cpu`. Não
-implementei porque não posso medir.
-
-**2. Divergência de esquema no `voices.json`.** Ver acima.
-
-**3. Assinatura da API do Kokoro.** Se `create()` tiver outra ordem de parâmetros
-ou devolver outro formato, o backend quebra no primeiro uso.
-
-**4. Sample rate do Piper.** O código lê `audio.sample_rate` do `.onnx.json`, com
-fallback para 22050. Se um `.json` não tiver esse campo, a voz sai com pitch
-errado em vez de falhar — pior que erro, porque parece funcionar.
-
-**5. Alinhamento da supressão de eco no hardware real.** O teste usa eco
-sintético com atraso constante. Driver real tem jitter, e o buffer do
-`RawOutputStream` introduz atraso que não modelei. Pode ser que precise de janela
-de busca maior que 320 ms.
-
-**6. Números de latência do README são estimativa.** Vêm de benchmarks
-publicados dos componentes, não de medição nesta base de código. `--verbose`
-existe para você medir; substitua os números pelos seus.
+- Open microphone with wake word (`hermes-voice` without `--text`)
+- Barge-in / echo suppression with real hardware
+- Adaptive endpointing with real audio
+- `ptt` mode (keyboard hook + EDR)
+- macOS (not available)
+- Piper Python backend (not installable on Windows)
 
 ---
 
-## Roteiro de verificação manual
+## Where I would bet the problem is
 
-Na primeira vez que rodar em hardware real, nesta ordem:
+In order of probability.
+
+**1. Endpoint probe latency blocks the audio loop.**
+The probe calls `stt.transcribe()` synchronously on the thread consuming
+frames. On GPU it's ~150 ms, acceptable. On CPU it can be 1–3 s, and the
+`FrameSource` queue has 64 frames (~2 s) and discards old ones when full. That is:
+**on CPU, the probe probably swallows audio.** The fix is to run the probe in a
+thread, or disable `ADAPTIVE_ENDPOINT` when `WHISPER_DEVICE=cpu`. Not implemented
+because I can't measure.
+
+**2. Schema divergence in `voices.json`.** See above.
+
+**3. Kokoro API signature.** If `create()` has a different parameter order or
+returns a different format, the backend breaks on first use.
+
+**4. Piper sample rate.** The code reads `audio.sample_rate` from `.onnx.json`, with
+fallback to 22050. If a `.json` lacks that field, the voice comes out with the wrong
+pitch instead of failing — worse than an error, because it seems to work.
+
+**5. Echo suppression alignment on real hardware.** The test uses synthetic echo
+with constant delay. Real drivers have jitter, and the `RawOutputStream` buffer
+introduces delay I haven't modeled. May need a search window larger than 320 ms.
+
+**6. README latency numbers are estimates.** They come from published benchmarks
+of the components, not from measurement in this codebase. `--verbose` exists for
+you to measure; replace the numbers with yours.
+
+---
+
+## Manual verification script
+
+The first time you run on real hardware, in this order:
 
 ```bash
-hermes-voice --doctor                       # 1. ambiente
-hermes-voice voices --languages             # 2. o índice do Piper carregou?
-hermes-voice voices --install pt_BR-faber-medium   # 3. download e MD5
-hermes-voice --text --no-tts                # 4. só o Hermes
-hermes-voice --text                         # 5. + síntese
-hermes-voice --devices                      # 6. dispositivos
-hermes-voice --trigger console --no-tts     # 7. só o STT
-hermes-voice --trigger console              # 8. pipeline, gatilho manual
-hermes-voice --verbose                      # 9. microfone aberto, com tempos
+hermes-voice --doctor                       # 1. environment
+hermes-voice voices --languages             # 2. did the Piper index load?
+hermes-voice voices --install pt_BR-faber-medium   # 3. download and MD5
+hermes-voice --text --no-tts                # 4. just Hermes
+hermes-voice --text                         # 5. + synthesis
+hermes-voice --devices                      # 6. devices
+hermes-voice --trigger console --no-tts     # 7. just STT
+hermes-voice --trigger console              # 8. pipeline, manual trigger
+hermes-voice --verbose                      # 9. open microphone, with timings
 ```
 
-Anote o que falhar. Os passos 2, 3 e 9 são os que exercitam código nunca
-executado.
+Note what fails. Steps 2, 3, and 9 exercise code that has never been executed.
 
-Para o DSP, compare de ouvido:
+For DSP, compare by ear:
 
 ```bash
 hermes-voice --text --dsp off
@@ -142,10 +139,10 @@ hermes-voice --text --dsp intercom
 
 ---
 
-## O que este documento não é
+## What this document is not
 
-Não é lista de bugs conhecidos — bug conhecido é corrigido, não documentado. É a
-fronteira entre o que foi verificado e o que foi apenas escrito com cuidado.
+It's not a list of known bugs — a known bug is fixed, not documented. It's the
+boundary between what has been verified and what has only been carefully written.
 
-Se você encontrar algo desta lista funcionando, remova a linha. Se encontrar
-falhando, abra issue e mova para o `CHANGELOG.md` quando corrigir.
+If you find something on this list working, remove the line. If you find it
+failing, open an issue and move it to `CHANGELOG.md` when fixed.

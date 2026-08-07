@@ -1,7 +1,7 @@
-"""hermes-voice -- interface de voz conversacional em pt-BR para o Hermes Agent.
+"""hermes-voice -- conversational voice interface in Brazilian Portuguese for Hermes Agent.
 
-Microfone aberto, palavra de ativacao, fim de fala por VAD, sessao que fecha
-sozinha. Pipeline encadeado (STT -> LLM -> TTS) com streaming por sentenca.
+Open mic, wake word, VAD end-of-speech, session that closes on its own.
+Chained pipeline (STT -> LLM -> TTS) with sentence-level streaming.
 """
 
 from __future__ import annotations

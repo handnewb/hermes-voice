@@ -1,7 +1,7 @@
-"""Playback em streaming com interrupcao, comum a todos os backends.
+"""Streaming playback with interrupt, common to all backends.
 
-A escrita e feita em frames de ~23 ms para que interrupt() corte o audio em
-tempo humano em vez de esperar o fim do trecho sintetizado.
+Output is written in ~23 ms frames so that interrupt() cuts the audio in
+human time instead of waiting for the end of the synthesized segment.
 """
 
 from __future__ import annotations
@@ -42,10 +42,10 @@ class Speaker:
         self._thread.start()
 
     def set_echo(self, suppressor) -> None:
-        """Registra o supressor de eco que recebe a referencia do que tocamos."""
+        """Registers the echo suppressor that receives a reference of what we play."""
         self._echo = suppressor
 
-    # -- API do orquestrador -------------------------------------------------
+    # -- Orchestrator API -------------------------------------------------
     def begin_turn(self) -> None:
         self._drain()
         self._stop.clear()
@@ -81,7 +81,7 @@ class Speaker:
             with contextlib.suppress(Exception):
                 target.close()
 
-    # -- interno -------------------------------------------------------------
+    # -- internal -------------------------------------------------------------
     def _drain(self) -> None:
         while True:
             try:
@@ -100,7 +100,7 @@ class Speaker:
             try:
                 self._play(str(item))
             except Exception as exc:
-                log.error("Falha na sintese: %s", exc)
+                log.error("Synthesis failed: %s", exc)
 
     def _play(self, text: str) -> None:
         frame_bytes = FRAME_SAMPLES * 2

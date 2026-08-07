@@ -1,7 +1,7 @@
-"""Piper: TTS local, rapido, licenca MIT.
+"""Piper: local TTS, fast, MIT license.
 
-Dois caminhos porque o wheel de piper-phonemize falha com frequencia no Windows:
-o pacote Python quando disponivel, o binario via subprocess quando nao.
+Two paths because the piper-phonemize wheel frequently fails on Windows:
+the Python package when available, the binary via subprocess when not.
 """
 
 from __future__ import annotations
@@ -20,14 +20,14 @@ log = logging.getLogger("hermes.tts.piper")
 
 
 class PiperPython:
-    """Backend via pacote piper-tts. Menor latencia, wheel mais fragil."""
+    """Backend via the piper-tts package. Lower latency, more fragile wheel."""
 
     def __init__(self, model_path: str) -> None:
         from piper.voice import PiperVoice  # type: ignore
 
         path = Path(model_path)
         if not path.exists():
-            raise FileNotFoundError(f"Modelo Piper ausente: {path}")
+            raise FileNotFoundError(f"Piper model missing: {path}")
         config = path.with_suffix(path.suffix + ".json")
         self._voice = PiperVoice.load(
             str(path), config_path=str(config) if config.exists() else None
@@ -51,20 +51,20 @@ class PiperPython:
 
 
 class PiperBinary:
-    """Backend via piper.exe. Recomendado no Windows.
+    """Backend via piper.exe. Recommended on Windows.
 
-    Um processo por trecho: ~150 ms de startup. O custo cai sobre a primeira
-    frase de cada resposta, nao sobre cada palavra, porque o SentenceChunker
-    entrega trechos e nao tokens.
+    One process per segment: ~150 ms of startup. The cost falls on the first
+    phrase of each response, not on each word, because the SentenceChunker
+    delivers segments and not tokens.
     """
 
     def __init__(self, binary: str, model_path: str) -> None:
         exe = shutil.which(binary) or binary
         if not Path(exe).exists():
-            raise FileNotFoundError(f"Binario Piper ausente: {exe}")
+            raise FileNotFoundError(f"Piper binary missing: {exe}")
         model = Path(model_path)
         if not model.exists():
-            raise FileNotFoundError(f"Modelo Piper ausente: {model}")
+            raise FileNotFoundError(f"Piper model missing: {model}")
         self._exe, self._model = str(exe), str(model)
         self.name = "piper-binary"
 
@@ -74,7 +74,7 @@ class PiperBinary:
             try:
                 rate = int(json.loads(config.read_text(encoding="utf-8"))["audio"]["sample_rate"])
             except Exception:
-                log.warning("Nao consegui ler sample_rate de %s; assumindo 22050.", config.name)
+                log.warning("Could not read sample_rate from %s; assuming 22050.", config.name)
         self.sample_rate = rate
 
     def synth(self, text: str) -> Iterator[bytes]:

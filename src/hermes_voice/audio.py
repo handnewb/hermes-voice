@@ -1,4 +1,4 @@
-"""Captura de microfone: microfone aberto (FrameSource) e push-to-talk (Recorder)."""
+"""Microphone capture: open mic (FrameSource) and push-to-talk (Recorder)."""
 
 from __future__ import annotations
 
@@ -12,10 +12,11 @@ log = logging.getLogger("hermes.audio")
 
 
 def _sd():
-    """Import preguicoso do sounddevice.
+    """Lazy import of sounddevice.
 
-    O modulo carrega a libportaudio no import. Runners de CI e containers nao
-    tem placa de som, e o pacote precisa ser importavel (e testavel) sem ela.
+    The module loads libportaudio on import. CI runners and containers don't
+    have sound cards, and the package needs to be importable (and testable)
+    without one.
     """
     import sounddevice as sd
 
@@ -23,7 +24,7 @@ def _sd():
 
 
 def resolve_device(spec: str, kind: str) -> int | None:
-    """Aceita indice numerico ou fragmento do nome do dispositivo."""
+    """Accepts numeric index or device name fragment."""
     spec = (spec or "").strip()
     if not spec:
         return None
@@ -34,12 +35,12 @@ def resolve_device(spec: str, kind: str) -> int | None:
     for idx, dev in enumerate(_sd().query_devices()):
         if dev[key] > 0 and want in dev["name"].lower():
             return idx
-    log.warning("Dispositivo de %s '%s' nao encontrado; usando o padrao.", kind, spec)
+    log.warning("%s device '%s' not found; using default.", kind, spec)
     return None
 
 
 def list_devices() -> str:
-    lines = ["", "Dispositivos de audio disponiveis:", "-" * 60]
+    lines = ["", "Available audio devices:", "-" * 60]
     for idx, dev in enumerate(_sd().query_devices()):
         tags = []
         if dev["max_input_channels"] > 0:
@@ -51,14 +52,14 @@ def list_devices() -> str:
 
 
 class FrameSource:
-    """Microfone aberto: entrega frames de tamanho fixo por uma fila.
+    """Open mic: delivers fixed-size frames through a queue.
 
-    Diferente do Recorder, nao tem estado de "gravando". Ele so produz frames; a
-    maquina de estados decide o que fazer com cada um. Isso mantem a decisao de
-    privacidade num lugar so (session.py) em vez de espalhada pelo audio.
+    Unlike Recorder, it has no "recording" state. It just produces frames; the
+    state machine decides what to do with each one. This keeps the privacy
+    decision in one place (session.py) instead of spread across audio.
 
-    A fila e limitada: se o consumidor travar, frames antigos sao descartados em
-    vez de a memoria crescer sem limite.
+    The queue is bounded: if the consumer stalls, old frames are dropped instead
+    of memory growing unbounded.
     """
 
     def __init__(
@@ -85,7 +86,7 @@ class FrameSource:
 
     def _callback(self, indata, _frames, _time, status) -> None:
         if status:
-            log.debug("Status do stream de entrada: %s", status)
+            log.debug("Input stream status: %s", status)
         try:
             self._q.put_nowait(indata[:, 0].copy())
         except queue.Full:
@@ -110,7 +111,7 @@ class FrameSource:
             return None
 
     def drain(self) -> int:
-        """Descarta o acumulado. Usado ao sair de THINKING."""
+        """Discards accumulated frames. Used when leaving THINKING."""
         n = 0
         while True:
             try:
@@ -128,10 +129,10 @@ class FrameSource:
 
 
 class Recorder:
-    """Grava enquanto a tecla PTT estiver pressionada.
+    """Records while the PTT key is held down.
 
-    O InputStream fica aberto durante toda a sessao (abrir/fechar custa ~200 ms
-    no WASAPI). Os frames sao descartados quando nao estamos gravando.
+    The InputStream stays open for the entire session (open/close costs ~200 ms
+    on WASAPI). Frames are discarded when we're not recording.
     """
 
     def __init__(
@@ -160,7 +161,7 @@ class Recorder:
 
     def _callback(self, indata, _frames, _time, status) -> None:
         if status:
-            log.debug("Status do stream de entrada: %s", status)
+            log.debug("Input stream status: %s", status)
         with self._lock:
             if not self._active or self._frames >= self.max_frames:
                 return
@@ -203,7 +204,7 @@ class Recorder:
             return self._peak
 
     def stop(self) -> tuple[np.ndarray, float]:
-        """Retorna (pcm float32 mono, pico de amplitude)."""
+        """Returns (float32 mono PCM, amplitude peak)."""
         with self._lock:
             self._active = False
             chunks, peak = self._chunks, self._peak

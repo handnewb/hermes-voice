@@ -1,11 +1,11 @@
-"""Autodiagnostico. Verifica tudo antes de o usuario descobrir na pratica.
+"""Self-diagnostics. Checks everything before the user discovers issues in practice.
 
-Existe porque, num projeto de voz, 90% dos problemas relatados sao de ambiente e
-nao de codigo: driver de audio, cuDNN faltando, wheel que nao compilou, chave
-ausente, endpoint fora do ar, EDR bloqueando. Sem isto, cada issue aberta vira
-uma conversa de dez mensagens para descobrir qual das dez coisas quebrou.
+Exists because, in a voice project, 90% of reported problems are environment and
+not code: audio driver, missing cuDNN, wheel that didn't compile, missing key,
+endpoint down, EDR blocking. Without this, every opened issue becomes a ten-message
+conversation to discover which of ten things broke.
 
-Nada aqui escreve arquivo, envia audio ou imprime segredo.
+Nothing here writes files, sends audio, or prints secrets.
 """
 
 from __future__ import annotations
@@ -46,34 +46,34 @@ def _has(module: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Grupos de verificacao
+# Check groups
 # ---------------------------------------------------------------------------
 def check_runtime() -> list[Check]:
     out = []
     v = sys.version_info
     ver = f"{v.major}.{v.minor}.{v.micro}"
     if v < (3, 10):
-        out.append(Check("Python", "fail", ver, "Use 3.10 ou superior."))
+        out.append(Check("Python", "fail", ver, "Use 3.10 or higher."))
     elif v >= (3, 14):
         out.append(
             Check(
                 "Python",
                 "warn",
                 ver,
-                "Wheels de ctranslate2/pynput podem nao existir. 3.12 e mais seguro.",
+                "ctranslate2/pynput wheels may not exist. 3.12 is safer.",
             )
         )
     else:
         out.append(Check("Python", "ok", ver))
     out.append(
-        Check("Sistema", "ok", f"{platform.system()} {platform.release()} ({platform.machine()})")
+        Check("System", "ok", f"{platform.system()} {platform.release()} ({platform.machine()})")
     )
     return out
 
 
 def check_audio(cfg: Config) -> list[Check]:
     if not _has("sounddevice"):
-        return [Check("sounddevice", "fail", "ausente", "pip install sounddevice")]
+        return [Check("sounddevice", "fail", "missing", "pip install sounddevice")]
     try:
         import sounddevice as sd
 
@@ -84,7 +84,7 @@ def check_audio(cfg: Config) -> list[Check]:
                 "PortAudio",
                 "fail",
                 str(exc)[:90],
-                "Linux: apt install libportaudio2. Windows: reinstale sounddevice.",
+                "Linux: apt install libportaudio2. Windows: reinstall sounddevice.",
             )
         ]
 
@@ -92,19 +92,19 @@ def check_audio(cfg: Config) -> list[Check]:
     outs = [d for d in devices if d["max_output_channels"] > 0]
     out = [
         Check(
-            "Microfones",
+            "Microphones",
             "ok" if ins else "fail",
-            f"{len(ins)} encontrado(s)",
-            "" if ins else "Nenhuma entrada. Verifique a permissao de microfone do sistema.",
+            f"{len(ins)} found",
+            "" if ins else "No input. Check system microphone permission.",
         ),
-        Check("Saidas de audio", "ok" if outs else "fail", f"{len(outs)} encontrada(s)"),
+        Check("Audio outputs", "ok" if outs else "fail", f"{len(outs)} found"),
     ]
     for label, spec, kind in (
         ("INPUT_DEVICE", cfg.input_device, "input"),
         ("OUTPUT_DEVICE", cfg.output_device, "output"),
     ):
         if not spec:
-            out.append(Check(label, "skip", "padrao do sistema"))
+            out.append(Check(label, "skip", "system default"))
             continue
         from .audio import resolve_device
 
@@ -114,8 +114,8 @@ def check_audio(cfg: Config) -> list[Check]:
                 Check(
                     label,
                     "warn",
-                    f"'{spec}' nao encontrado",
-                    "Rode --devices e use o indice numerico.",
+                    f"'{spec}' not found",
+                    "Run --devices and use the numeric index.",
                 )
             )
         else:
@@ -125,11 +125,11 @@ def check_audio(cfg: Config) -> list[Check]:
 
 def check_stt(cfg: Config) -> list[Check]:
     if not _has("faster_whisper"):
-        return [Check("faster-whisper", "fail", "ausente", "pip install faster-whisper")]
-    out = [Check("faster-whisper", "ok", f"modelo '{cfg.whisper_model}'")]
+        return [Check("faster-whisper", "fail", "missing", "pip install faster-whisper")]
+    out = [Check("faster-whisper", "ok", f"model '{cfg.whisper_model}'")]
     if cfg.whisper_device != "cuda":
         out.append(
-            Check("Aceleracao STT", "warn", "cpu", "1-3 s por turno. Com GPU cai para ~300 ms.")
+            Check("STT acceleration", "warn", "cpu", "1-3 s per turn. With GPU drops to ~300 ms.")
         )
 
         return out
@@ -138,14 +138,14 @@ def check_stt(cfg: Config) -> list[Check]:
 
         n = ctranslate2.get_cuda_device_count()
     except Exception as exc:
-        return [*out, Check("CUDA", "warn", str(exc)[:80], "Cai para CPU automaticamente.")]
+        return [*out, Check("CUDA", "warn", str(exc)[:80], "Falls back to CPU automatically.")]
     if n == 0:
         out.append(
             Check(
                 "CUDA",
                 "warn",
-                "nenhum device visivel",
-                "WHISPER_DEVICE=cpu, ou instale nvidia-cudnn-cu12 e ajuste o PATH.",
+                "no visible device",
+                "WHISPER_DEVICE=cpu, or install nvidia-cudnn-cu12 and adjust PATH.",
             )
         )
     else:
@@ -155,14 +155,14 @@ def check_stt(cfg: Config) -> list[Check]:
 
 def check_wake(cfg: Config) -> list[Check]:
     if cfg.wake_backend in ("none", "off"):
-        return [Check("Wake word", "skip", "desabilitada")]
+        return [Check("Wake word", "skip", "disabled")]
     if cfg.wake_backend == "open":
         return [
             Check(
                 "Wake word",
                 "warn",
-                "modo aberto",
-                "Qualquer fala abre sessao E sera transcrita. Use fone.",
+                "open mode",
+                "Any speech opens a session AND will be transcribed. Use headphones.",
             )
         ]
     if not _has("openwakeword"):
@@ -170,14 +170,14 @@ def check_wake(cfg: Config) -> list[Check]:
             Check(
                 "openWakeWord",
                 "fail",
-                "ausente",
-                "pip install 'hermes-voice[wake]', ou --trigger console",
+                "missing",
+                "pip install 'hermes-voice[wake]', or --trigger console",
             )
         ]
     palavra = cfg.wake_model.replace("hey_", "")
     return [
-        Check("openWakeWord", "ok", f"modelo '{cfg.wake_model}', limiar {cfg.wake_threshold}"),
-        Check("Palavra a dizer", "ok", f'"ei {palavra}"'),
+        Check("openWakeWord", "ok", f"model '{cfg.wake_model}', threshold {cfg.wake_threshold}"),
+        Check("Word to say", "ok", f'"hey {palavra}"'),
     ]
 
 
@@ -187,8 +187,8 @@ def check_vad(cfg: Config) -> list[Check]:
             Check(
                 "VAD",
                 "warn",
-                "onnxruntime ausente",
-                "Cai para VAD por energia, que dispara com ruido de fundo.",
+                "onnxruntime missing",
+                "Falls back to energy VAD, which triggers with background noise.",
             )
         ]
     try:
@@ -205,14 +205,14 @@ def check_vad(cfg: Config) -> list[Check]:
             Check(
                 "Silero VAD",
                 "warn",
-                "modelo nao encontrado",
-                "hermes-voice voices --install all baixa junto.",
+                "model not found",
+                "hermes-voice voices --install all downloads it together.",
             )
         )
     if cfg.adaptive_endpoint:
         out.append(
             Check(
-                "Endpointing", "ok", f"adaptativo {cfg.endpoint_short_ms}-{cfg.endpoint_long_ms} ms"
+                "Endpointing", "ok", f"adaptive {cfg.endpoint_short_ms}-{cfg.endpoint_long_ms} ms"
             )
         )
     else:
@@ -220,11 +220,11 @@ def check_vad(cfg: Config) -> list[Check]:
             Check(
                 "Endpointing",
                 "warn",
-                f"fixo {cfg.silence_ms} ms",
-                "ADAPTIVE_ENDPOINT=1 evita cortar frase pela metade.",
+                f"fixed {cfg.silence_ms} ms",
+                "ADAPTIVE_ENDPOINT=1 avoids cutting phrases in half.",
             )
         )
-    out.append(Check("Sessao", "ok", f"fecha apos {cfg.follow_up_seconds:.0f} s"))
+    out.append(Check("Session", "ok", f"closes after {cfg.follow_up_seconds:.0f} s"))
     return out
 
 
@@ -240,67 +240,67 @@ def check_tts(cfg: Config) -> list[Check]:
 
     total = len(piper_onnx) + (len(kokoro_catalog()) if kokoro_ok else 0)
     if total:
-        detalhe = f"{len(piper_onnx)} Piper" + (", Kokoro presente" if kokoro_ok else "")
-        out.append(Check("Vozes instaladas", "ok", detalhe))
+        detail = f"{len(piper_onnx)} Piper" + (", Kokoro present" if kokoro_ok else "")
+        out.append(Check("Installed voices", "ok", detail))
     else:
         out.append(
             Check(
-                "Vozes instaladas",
+                "Installed voices",
                 "fail",
-                "nenhuma",
+                "none",
                 "hermes-voice voices --install pt_BR-faber-medium",
             )
         )
 
-    escolhida = cfg.voice or "pt_BR-faber-medium"
-    pronta = kokoro_ok if cfg.tts_backend == "kokoro" else Path(cfg.piper_model).exists()
+    chosen = cfg.voice or "pt_BR-faber-medium"
+    ready = kokoro_ok if cfg.tts_backend == "kokoro" else Path(cfg.piper_model).exists()
     out.append(
         Check(
-            "Voz escolhida",
-            "ok" if pronta else "fail",
-            f"{escolhida} ({cfg.tts_backend})",
-            "" if pronta else f"hermes-voice voices --install {escolhida}",
+            "Chosen voice",
+            "ok" if ready else "fail",
+            f"{chosen} ({cfg.tts_backend})",
+            "" if ready else f"hermes-voice voices --install {chosen}",
         )
     )
 
     out.append(
         Check(
-            "Engine Kokoro",
+            "Kokoro Engine",
             "ok" if _has("kokoro_onnx") else "skip",
-            "kokoro-onnx presente" if _has("kokoro_onnx") else "nao instalada (opcional)",
+            "kokoro-onnx present" if _has("kokoro_onnx") else "not installed (optional)",
         )
     )
     exe = shutil.which(cfg.piper_binary) or cfg.piper_binary
-    tem_exe = Path(exe).exists()
+    has_exe = Path(exe).exists()
     out.append(
         Check(
-            "Engine Piper",
-            "ok" if tem_exe else "warn",
-            "binario presente" if tem_exe else "binario ausente",
-            "" if tem_exe else "hermes-voice voices --install <ID>",
+            "Piper Engine",
+            "ok" if has_exe else "warn",
+            "binary present" if has_exe else "binary missing",
+            "" if has_exe else "hermes-voice voices --install <ID>",
         )
     )
 
     if cfg.dsp_preset not in ("off", "none", ""):
-        out.append(Check("DSP de presenca", "ok", f"preset '{cfg.dsp_preset}'"))
+        out.append(Check("Presence DSP", "ok", f"preset '{cfg.dsp_preset}'"))
     else:
-        out.append(Check("DSP de presenca", "skip", "off -- --dsp room da presenca de sala"))
+        out.append(Check("Presence DSP", "skip", "off -- --dsp room gives room presence"))
     return out
 
 
 def check_llm(cfg: Config, probe: bool = False) -> list[Check]:
-    out = [Check("Endpoint do Hermes", "ok", cfg.hermes_url)]
+    out = [Check("Hermes endpoint", "ok", cfg.hermes_url)]
     persona = Path(cfg.persona_file)
     out.append(
         Check(
-            "Arquivo de persona",
+            "Persona file",
             "ok" if persona.exists() else "warn",
-            persona.name if persona.exists() else "ausente",
-            "" if persona.exists() else "Usando fallback embutido.",
+            persona.name if persona.exists() else "missing",
+            "" if persona.exists() else "Using built-in fallback.",
         )
     )
     if not probe:
-        out.append(Check("Alcance do endpoint", "skip", "use --doctor --probe para testar"))
+        out.append(Check("Endpoint reachability", "skip", "use --doctor --probe to test"))
         return out
     try:
         import httpx
@@ -317,32 +317,32 @@ def check_llm(cfg: Config, probe: bool = False) -> list[Check]:
             headers={"Authorization": f"Bearer {cfg.hermes_api_key}"} if cfg.hermes_api_key else {},
         )
         if r.status_code < 400:
-            out.append(Check("Alcance do endpoint", "ok", f"HTTP {r.status_code}"))
+            out.append(Check("Endpoint reachability", "ok", f"HTTP {r.status_code}"))
         elif r.status_code in (401, 403):
             out.append(
                 Check(
-                    "Alcance do endpoint",
+                    "Endpoint reachability",
                     "fail",
                     f"HTTP {r.status_code}",
-                    "Verifique HERMES_API_KEY.",
+                    "Check HERMES_API_KEY.",
                 )
             )
         else:
             out.append(
                 Check(
-                    "Alcance do endpoint",
+                    "Endpoint reachability",
                     "warn",
                     f"HTTP {r.status_code}",
-                    "Responde, mas rejeitou a requisicao. Confira HERMES_MODEL.",
+                    "Responded, but rejected the request. Check HERMES_MODEL.",
                 )
             )
     except Exception as exc:
         out.append(
             Check(
-                "Alcance do endpoint",
+                "Endpoint reachability",
                 "fail",
                 type(exc).__name__,
-                "O Hermes esta rodando e escutando nesse endereco?",
+                "Is Hermes running and listening at that address?",
             )
         )
     return out
@@ -353,40 +353,40 @@ def check_privacy(cfg: Config) -> list[Check]:
     if cfg.log_transcripts:
         out.append(
             Check(
-                "Log de transcricao",
+                "Transcript logging",
                 "warn",
-                "LIGADO",
-                "Grava em disco o que voce falar. LOG_TRANSCRIPTS=0 desliga.",
+                "ON",
+                "Writes what you say to disk. LOG_TRANSCRIPTS=0 turns it off.",
             )
         )
     else:
-        out.append(Check("Log de transcricao", "ok", "desligado, nada toca o disco"))
+        out.append(Check("Transcript logging", "ok", "off, nothing touches disk"))
     out.append(
         Check(
-            "Meia-duplex",
+            "Half-duplex",
             "ok" if cfg.half_duplex else "warn",
-            "ligado" if cfg.half_duplex else "DESLIGADO",
-            "" if cfg.half_duplex else "Sem fone, o Hermes vai conversar consigo mesmo.",
+            "on" if cfg.half_duplex else "OFF",
+            "" if cfg.half_duplex else "Without headphones, Hermes will talk to itself.",
         )
     )
     hint = (cfg.whisper_hint or "").strip()
     if hint:
         out.append(
-            Check("Vocabulario custom", "ok", f"{len(hint.split(','))} termo(s) via WHISPER_HINT")
+            Check("Custom vocabulary", "ok", f"{len(hint.split(','))} term(s) via WHISPER_HINT")
         )
     out.append(
         Check(
-            "Egress de dados",
+            "Data egress",
             "ok",
-            "so o endpoint do Hermes; voz e wake word rodam locais",
+            "only the Hermes endpoint; voice and wake word run locally",
         )
     )
     if not cfg.half_duplex:
         out.append(
             Check(
-                "Supressao de eco",
+                "Echo suppression",
                 "ok",
-                f"margem {cfg.echo_margin_db:.0f} dB -- fone ainda e melhor",
+                f"margin {cfg.echo_margin_db:.0f} dB -- headphones are still better",
             )
         )
     return out
@@ -398,17 +398,17 @@ def run(cfg: Config | None = None, probe: bool = False) -> int:
     groups = [
         ("Runtime", check_runtime()),
         ("Audio", check_audio(cfg)),
-        ("Transcricao", check_stt(cfg)),
-        ("Palavra de ativacao", check_wake(cfg)),
-        ("Fim de fala", check_vad(cfg)),
-        ("Sintese de voz", check_tts(cfg)),
+        ("Transcription", check_stt(cfg)),
+        ("Wake word", check_wake(cfg)),
+        ("End of speech", check_vad(cfg)),
+        ("Speech synthesis", check_tts(cfg)),
         ("Hermes", check_llm(cfg, probe)),
-        ("Privacidade", check_privacy(cfg)),
+        ("Privacy", check_privacy(cfg)),
     ]
 
     from . import __version__
 
-    print(f"\n{BOLD}hermes-voice {__version__} -- diagnostico{RESET}")
+    print(f"\n{BOLD}hermes-voice {__version__} -- diagnostics{RESET}")
     fails = warns = 0
     for title, checks in groups:
         print(f"\n{CYAN}{title}{RESET}")
@@ -423,16 +423,16 @@ def run(cfg: Config | None = None, probe: bool = False) -> int:
     print()
     if fails:
         print(
-            f"{RED}{fails} bloqueante(s){RESET}"
-            + (f", {YELLOW}{warns} aviso(s){RESET}" if warns else "")
+            f"{RED}{fails} blocking{RESET}"
+            + (f", {YELLOW}{warns} warning(s){RESET}" if warns else "")
         )
-        print(f"{DIM}Bloqueantes impedem a execucao. Avisos degradam a experiencia.{RESET}")
+        print(f"{DIM}Blocking issues prevent execution. Warnings degrade the experience.{RESET}")
     elif warns:
-        print(f"{YELLOW}{warns} aviso(s){RESET} -- deve funcionar, com ressalvas.")
+        print(f"{YELLOW}{warns} warning(s){RESET} -- should work, with caveats.")
     else:
-        print(f"{GREEN}Tudo pronto.{RESET}")
+        print(f"{GREEN}All good.{RESET}")
 
     if os.environ.get("CI"):
-        print(f"{DIM}CI detectado: ausencia de audio e GPU e esperada aqui.{RESET}")
+        print(f"{DIM}CI detected: absence of audio and GPU is expected here.{RESET}")
     print()
     return 1 if fails else 0

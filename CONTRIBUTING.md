@@ -1,8 +1,8 @@
-# Contribuindo
+# Contributing
 
-Contribuição é bem-vinda. Este documento existe para você não perder tempo.
+Contributions are welcome. This document exists so you don't waste time.
 
-## Preparar o ambiente
+## Set up the environment
 
 ```bash
 git clone https://github.com/handnewb/hermes-voice
@@ -14,86 +14,83 @@ cp .env.example .env
 hermes-voice --doctor
 ```
 
-## Antes de abrir PR
+## Before opening a PR
 
 ```bash
 ruff check . && ruff format . && pytest
 ```
 
-## A regra que mais importa aqui
+## The rule that matters most here
 
-**Nenhum teste pode exigir placa de som, GPU, rede ou chave de API.**
+**No test may require a sound card, GPU, network, or API key.**
 
-Isso não é preferência, é o que mantém a suíte viva. Projetos de áudio que só
-podem ser testados com hardware terminam sem testes. Os imports de `sounddevice`
-são preguiçosos de propósito (`audio._sd()`) para que o pacote seja importável e
-testável num runner sem áudio.
+This isn't a preference — it's what keeps the suite alive. Audio projects that can
+only be tested with hardware end up with no tests. The `sounddevice` imports are
+lazy on purpose (`audio._sd()`) so the package is importable and testable in a
+runner without audio.
 
-O que dá para testar sem hardware, e está testado: fatiador de sentenças,
-máquina de estados, limites de buffer, limpeza da palavra de ativação, cadeia de
-DSP (numericamente, com tom sintético), parsing de configuração, redação de
-segredos.
+What can be tested without hardware, and is tested: sentence chunker, state
+machine, buffer limits, wake word cleanup, DSP chain (numerically, with synthetic
+tone), config parsing, secret redaction.
 
-O que precisa de teste manual: qualidade de detecção da palavra de ativação,
-sensação de latência, timbre. Descreva no PR o que você testou à mão, em qual SO
-e com qual backend.
+What needs manual testing: wake word detection quality, latency feel, timbre.
+Describe in the PR what you tested manually, on which OS, and with which backend.
 
-## Padrões de código
+## Code standards
 
-- `ruff` cuida de estilo e imports. Não discuta formatação, rode a ferramenta.
-- Docstrings e comentários em pt-BR. Nomes de identificadores em inglês.
-- Comentário explica **por que**, não o que. Se o código precisa de comentário
-  para dizer o que faz, reescreva o código.
-- Sem dependência nova sem justificativa no PR. Cada uma é uma decisão de
-  cadeia de suprimentos, e este projeto já grava áudio — o orçamento de confiança
-  é curto.
+- `ruff` handles style and imports. Don't argue about formatting — run the tool.
+- Docstrings and comments in pt-BR. Identifier names in English.
+- Comments explain **why**, not what. If the code needs a comment to say what it
+  does, rewrite the code.
+- No new dependency without justification in the PR. Each one is a supply chain
+  decision, and this project already records audio — the trust budget is tight.
 
-## Mudanças que exigem discussão antes do código
+## Changes that require discussion before code
 
-Abra issue primeiro se o PR:
+Open an issue first if the PR:
 
-- alterar **captura, retenção ou envio de áudio**, incluindo tamanho de buffer,
-  o que é transcrito em cada estado, ou o que vai para disco;
-- adicionar backend que envie áudio (não texto) para serviço externo;
-- mexer nas três garantias descritas em `SECURITY.md`.
+- changes **audio capture, retention, or transmission**, including buffer size,
+  what is transcribed in each state, or what goes to disk;
+- adds a backend that sends audio (not text) to an external service;
+- touches the three guarantees described in `SECURITY.md`.
 
-Não é burocracia. Essas garantias são a razão pela qual dá para rodar isto numa
-máquina com outras pessoas por perto, e mudá-las sem discussão quebra a premissa
-do projeto.
+This isn't bureaucracy. These guarantees are the reason you can run this on a
+machine with other people nearby, and changing them without discussion breaks the
+project's premise.
 
-## O que não será aceito
+## What won't be accepted
 
-**Clonagem de voz de pessoa real a partir de amostra.** Voz é atributo de
-personalidade (no Brasil, art. 20 do Código Civil), há direito conexo do
-intérprete, e voz é dado biométrico sob LGPD e GDPR. Vale também para dubladores
-e para "só uso pessoal".
+**Cloning a real person's voice from a sample.** Voice is a personality attribute
+(in Brazil, art. 20 of the Civil Code), there are performer's related rights, and
+voice is biometric data under LGPD and GDPR. This applies to voice actors and to
+"personal use only" as well.
 
-A alternativa existe e é melhor: Voice Design da ElevenLabs gera timbre inédito a
-partir de descrição textual. Nenhuma pessoa real envolvida, e o resultado é seu.
-Há um prompt de exemplo no `README.md`.
+The alternative exists and is better: ElevenLabs Voice Design generates a novel
+timbre from a textual description. No real person involved, and the result is
+yours. There's an example prompt in `README.md`.
 
-## Onde ajudar
+## Where to help
 
-`docs/ROADMAP.md` tem o backlog com estimativa honesta de esforço. Os itens de
-maior impacto hoje:
+`docs/ROADMAP.md` has the backlog with honest effort estimates. The highest-impact
+items today:
 
-- **AEC** (cancelamento de eco) para conversar com caixas abertas. É o item mais
-  difícil e o mais pedido.
-- **Palavra de ativação em pt-BR** treinada nativamente, em vez do modelo inglês.
-- **Piper com processo persistente**, para eliminar os ~150 ms de startup.
-- **Mais idiomas.** A arquitetura não é específica de português; a persona e o
-  vocabulário são.
+- **AEC** (echo cancellation) to converse with open speakers. It's the hardest
+  and most requested item.
+- **Wake word in pt-BR** trained natively, instead of the English model.
+- **Piper with persistent process**, to eliminate ~150 ms of startup.
+- **More languages.** The architecture isn't Portuguese-specific; the persona and
+  vocabulary are.
 
-## Governança e permissões
+## Governance and permissions
 
-[`GOVERNANCE.md`](GOVERNANCE.md) descreve como decisões são tomadas, os caminhos
-protegidos e o que cada papel do GitHub pode fazer.
+[`GOVERNANCE.md`](GOVERNANCE.md) describes how decisions are made, the protected
+paths, and what each GitHub role can do.
 
-Dois pontos que economizam tempo: **contribuir não exige permissão nenhuma** —
-fork mais pull request cobre todos os casos, e você não precisa pedir acesso. E o
-papel Triage, concedido depois de um ou dois PRs aceitos, é o primeiro passo
-normal: permite rotular e fechar issue sem tocar em código.
+Two points that save time: **contributing requires no permission** — fork plus
+pull request covers all cases, and you don't need to ask for access. And the Triage
+role, granted after one or two accepted PRs, is the normal first step: it lets you
+label and close issues without touching code.
 
-## Código de conduta
+## Code of conduct
 
-Ver [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).

@@ -1,22 +1,23 @@
-"""Endpointing adaptativo: decidir quando a pessoa terminou de falar.
+"""Adaptive endpointing: deciding when the person has finished speaking.
 
-O problema do limiar fixo de silencio: 400 ms corta a pessoa no meio de uma
-pausa natural de pensamento; 1000 ms deixa a conversa lenta e hesitante. Nao
-existe um numero que sirva para os dois casos, porque a duracao da pausa carrega
-significado.
+The fixed silence threshold problem: 400 ms cuts the person off mid-thought
+during a natural pause; 1000 ms makes the conversation slow and hesitant.
+There's no single number that works for both, because pause duration carries
+meaning.
 
-Humanos nao contam silencio -- usam sintaxe e prosodia para prever o fim do
-turno. Este modulo faz uma aproximacao barata disso: transcreve num limiar curto,
-olha se a frase *parece terminada*, e se nao parecer, volta a escutar em vez de
-responder.
+Humans don't count silence -- they use syntax and prosody to predict turn end.
+This module makes a cheap approximation of that: transcribes at a short
+threshold, looks at whether the phrase *looks finished*, and if it doesn't,
+goes back to listening instead of responding.
 
-    "eu quero"                      -> incompleto, espera mais
-    "eu quero saber o status"       -> completo, responde
-    "o status do"                   -> preposicao pendurada, espera
-    "qual o status?"                -> pergunta fechada, responde rapido
+    "I want"                        -> incomplete, wait more
+    "I want to know the status"     -> complete, respond
+    "the status of"                 -> dangling preposition, wait
+    "what's the status?"            -> closed question, respond fast
 
-O custo e uma passada extra de STT quando a fala parece incompleta. Com
-large-v3-turbo em GPU sao ~150 ms, pagos so quando a heuristica acha que vale.
+The cost is one extra STT pass when the speech seems incomplete. With
+large-v3-turbo on GPU that's ~150 ms, paid only when the heuristic thinks
+it's warranted.
 """
 
 from __future__ import annotations
@@ -30,15 +31,15 @@ log = logging.getLogger("hermes.endpoint")
 
 
 class Completeness(Enum):
-    COMPLETE = "complete"  # responde agora
-    UNCERTAIN = "uncertain"  # espera o limiar normal
-    INCOMPLETE = "incomplete"  # espera o limiar longo
+    COMPLETE = "complete"  # respond now
+    UNCERTAIN = "uncertain"  # wait for the normal threshold
+    INCOMPLETE = "incomplete"  # wait for the long threshold
 
 
-# Palavras que quase nunca encerram um turno em pt-BR. Terminar aqui significa
-# que a pessoa parou para pensar, nao que acabou.
+# Words that almost never end a turn in pt-BR. Ending here means the person
+# paused to think, not that they're done.
 _PENDENTES = {
-    # preposicoes e artigos
+    # prepositions and articles
     "de",
     "da",
     "do",
@@ -81,7 +82,7 @@ _PENDENTES = {
     "numa",
     "dum",
     "duma",
-    # conjuncoes
+    # conjunctions
     "e",
     "ou",
     "mas",
@@ -106,7 +107,7 @@ _PENDENTES = {
     "nem",
     "tanto",
     "quanto",
-    # verbos auxiliares e de ligacao pendurados
+    # dangling auxiliary and linking verbs
     "é",
     "são",
     "foi",
@@ -134,7 +135,7 @@ _PENDENTES = {
     "havia",
     "sendo",
     "tendo",
-    # pronomes relativos e interrogativos soltos
+    # loose relative and interrogative pronouns
     "qual",
     "quais",
     "quem",
@@ -142,9 +143,9 @@ _PENDENTES = {
     "cujo",
     "cuja",
     "quantos",
-    # pronomes-sujeito pendurados: "preciso que voce...", "acho que ele..."
-    # Custo assimetrico: esperar 1250 ms em vez de 700 incomoda pouco; cortar
-    # a pessoa no meio da frase irrita muito. Na duvida, espera.
+    # dangling subject pronouns: "preciso que voce...", "acho que ele..."
+    # Asymmetric cost: waiting 1250 ms instead of 700 is mildly annoying;
+    # cutting the person off mid-sentence is very annoying. When in doubt, wait.
     "você",
     "vocês",
     "voce",
@@ -159,7 +160,7 @@ _PENDENTES = {
     "te",
     "lhe",
     "gente",
-    # marcadores de hesitacao
+    # hesitation markers
     "tipo",
     "né",
     "aí",
@@ -174,17 +175,17 @@ _PENDENTES = {
     "é...",
 }
 
-# Terminacoes que fecham turno com forca.
+# Endings that strongly close a turn.
 _FECHAMENTO = re.compile(r"[.!?]\s*$")
 
-# Perguntas curtas e diretas: responder rapido soa atento, nao apressado.
+# Short direct questions: responding fast sounds attentive, not rushed.
 _INTERROGATIVA = re.compile(
     r"\b(qual|quais|quem|quando|onde|como|quanto|quantos|quantas|por\s?que|"
     r"o\s?que|cadê|será)\b",
     re.IGNORECASE,
 )
 
-# Comandos imperativos comuns: tambem fecham turno.
+# Common imperative commands: also close a turn.
 _IMPERATIVO = re.compile(
     r"^\s*(isola|isole|para|pare|cancela|cancele|confirma|confirme|abre|abra|"
     r"fecha|feche|mostra|mostre|lista|liste|detalha|detalhe|repete|repita|"
@@ -196,44 +197,44 @@ _IMPERATIVO = re.compile(
 
 @dataclass(slots=True)
 class EndpointConfig:
-    short_ms: int = 380  # limiar de sondagem: transcreve e avalia
-    normal_ms: int = 700  # limiar padrao
-    long_ms: int = 1250  # quando a frase parece pendurada
-    min_words_probe: int = 2  # abaixo disso nem vale sondar
-    max_probes: int = 2  # teto de sondagens por turno, evita loop
+    short_ms: int = 380  # probe threshold: transcribe and evaluate
+    normal_ms: int = 700  # default threshold
+    long_ms: int = 1250  # when the phrase looks dangling
+    min_words_probe: int = 2  # below this, not worth probing
+    max_probes: int = 2  # probe cap per turn, avoids looping
 
 
 def classify(text: str) -> Completeness:
-    """Heuristica sintatica. Nao entende a frase; olha como ela termina."""
-    limpo = text.strip()
-    if not limpo:
+    """Syntactic heuristic. Doesn't understand the phrase; looks at how it ends."""
+    clean = text.strip()
+    if not clean:
         return Completeness.INCOMPLETE
 
-    palavras = re.findall(r"[\w'\u00c0-\u00ff]+", limpo.lower())
-    if not palavras:
+    words = re.findall(r"[\w'\u00c0-\u00ff]+", clean.lower())
+    if not words:
         return Completeness.INCOMPLETE
 
-    # Uma palavra so: quase sempre a pessoa esta comecando.
-    if len(palavras) < 2:
+    # A single word: the person is almost certainly just starting.
+    if len(words) < 2:
         return Completeness.INCOMPLETE
 
-    ultima = palavras[-1]
+    last = words[-1]
 
-    # Terminacao pendurada domina qualquer outro sinal. Mesmo com ponto final:
-    # o Whisper adiciona pontuacao onde nao houve pausa.
-    if ultima in _PENDENTES:
+    # A dangling ending dominates any other signal. Even with a period:
+    # Whisper adds punctuation where there was no pause.
+    if last in _PENDENTES:
         return Completeness.INCOMPLETE
 
-    # Pontuacao final de verdade fecha.
-    if _FECHAMENTO.search(limpo):
+    # Real end punctuation closes.
+    if _FECHAMENTO.search(clean):
         return Completeness.COMPLETE
 
-    # Pergunta ou comando com corpo suficiente fecha.
-    if len(palavras) >= 3 and (_INTERROGATIVA.search(limpo) or _IMPERATIVO.match(limpo)):
+    # Question or command with enough body closes.
+    if len(words) >= 3 and (_INTERROGATIVA.search(clean) or _IMPERATIVO.match(clean)):
         return Completeness.COMPLETE
 
-    # Frase razoavelmente longa terminando em palavra de conteudo: provavel fim.
-    if len(palavras) >= 6:
+    # Reasonably long phrase ending in a content word: likely done.
+    if len(words) >= 6:
         return Completeness.COMPLETE
 
     return Completeness.UNCERTAIN
@@ -248,16 +249,16 @@ def wait_ms(completeness: Completeness, cfg: EndpointConfig) -> int:
 
 
 class Endpointer:
-    """Estado da decisao de fim de turno dentro de um LISTENING.
+    """End-of-turn decision state within a LISTENING phase.
 
-    Uso pelo loop:
+    Usage by the loop:
         ep.reset()
-        ... a cada frame ...
-        if gate diz que houve silencio de short_ms:
+        ... each frame ...
+        if gate says there was short_ms silence:
             if ep.should_probe():
-                texto = stt.transcribe(audio_ate_agora)
-                if ep.decide(texto) is Completeness.COMPLETE: encerra
-                else: continua escutando com limiar estendido
+                text = stt.transcribe(audio_so_far)
+                if ep.decide(text) is Completeness.COMPLETE: end turn
+                else: keep listening with extended threshold
     """
 
     def __init__(self, cfg: EndpointConfig | None = None) -> None:
@@ -277,20 +278,21 @@ class Endpointer:
         self.probes += 1
         result = classify(text)
 
-        # Se o texto nao cresceu desde a ultima sondagem, a pessoa parou de
-        # falar de verdade -- encerra mesmo que a sintaxe pareca pendurada.
-        # Sem isto, "me passa o" com a pessoa distraida travaria o turno.
+        # If the text hasn't grown since the last probe, the person really
+        # stopped speaking -- close even if the syntax looks dangling.
+        # Without this, "pass me the" with a distracted person would lock
+        # the turn.
         if self.probes > 1 and text.strip() == self.last_text.strip():
-            log.debug("Texto estagnado em %r; encerrando turno.", text[:40])
+            log.debug("Text stagnated at %r; closing turn.", text[:40])
             result = Completeness.COMPLETE
 
-        # Ultima sondagem disponivel: aceita o que tem.
+        # Last probe available: take what we have.
         if self.probes >= self.cfg.max_probes and result is not Completeness.COMPLETE:
-            log.debug("Teto de sondagens; encerrando com %r.", text[:40])
+            log.debug("Probe cap reached; closing with %r.", text[:40])
             result = Completeness.COMPLETE
 
         self.last_text = text
         self.last_result = result
         self.extra_ms = wait_ms(result, self.cfg)
-        log.debug("Endpoint: %s (+%d ms) para %r", result.value, self.extra_ms, text[:50])
+        log.debug("Endpoint: %s (+%d ms) for %r", result.value, self.extra_ms, text[:50])
         return result

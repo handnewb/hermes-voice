@@ -1,19 +1,19 @@
-"""Deteccao de palavra de ativacao com openWakeWord.
+"""Wake word detection with openWakeWord.
 
-Apache-2.0, sem cadastro, sem chave de API. Os modelos pre-treinados sao baixados
-uma vez na primeira execucao.
+Apache-2.0, no registration, no API key. Pre-trained models are downloaded
+once on first run.
 
-Alternativas que exigem cadastro detectam melhor, mas a
-prioridade aqui e funcionar imediatamente, sem conta e sem depender de terceiro.
-O custo dessa escolha e real e esta documentado abaixo.
+Alternatives that require registration detect better, but the priority here
+is to work immediately, without accounts and without third-party dependency.
+The cost of that choice is real and documented below.
 
-Custo: o catalogo pre-treinado do openWakeWord e pequeno, e o modelo de
-ativacao disponivel e "hey_jarvis" -- ou seja, e preciso dizer "ei jarvis" e nao
-apenas "jarvis". A taxa de falso positivo tambem e pior. Para treinar uma palavra
-propria (inclusive em pt-BR), ver docs/ROADMAP.md.
+Cost: openWakeWord's pre-trained catalog is small, and the available activation
+model is "hey_jarvis" -- meaning you need to say "hey jarvis" and not just
+"jarvis". The false positive rate is also worse. To train a custom word
+(including in pt-BR), see docs/ROADMAP.md.
 
-Nota sobre o nome do modelo: "hey_jarvis" e o identificador do arquivo que o
-openWakeWord distribui. E dependencia funcional, nao marca do projeto.
+Note on model name: "hey_jarvis" is the file identifier that openWakeWord
+distributes. It's a functional dependency, not a project brand.
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ import numpy as np
 
 log = logging.getLogger("hermes.wake")
 
-# Modelos pre-treinados que o openWakeWord distribui. Catalogo pequeno: para
-# palavra arbitraria, use WAKE_BACKEND=keyword ou treine a sua (ver ROADMAP).
+# Pre-trained models distributed by openWakeWord. Small catalog: for arbitrary
+# words, use WAKE_BACKEND=keyword or train your own (see ROADMAP).
 PRETRAINED = ("hey_jarvis", "alexa", "hey_mycroft", "hey_rhasspy")
 DEFAULT_MODEL = "hey_jarvis"
 
@@ -65,7 +65,7 @@ class OpenWakeWord:
         self._key = model
         self._threshold = threshold
         log.info(
-            "openWakeWord pronto: modelo '%s', limiar %.2f. Diga \"ei %s\".",
+            "openWakeWord ready: model '%s', threshold %.2f. Say \"hey %s\".",
             model,
             threshold,
             model.replace("hey_", ""),
@@ -84,21 +84,22 @@ class OpenWakeWord:
 
 
 class KeywordSpotter:
-    """Palavra de ativacao ARBITRARIA, em qualquer idioma, sem treinar modelo.
+    """ARBITRARY wake word, in any language, without training a model.
 
-    Como funciona: quando o VAD detecta fala, transcreve a janela com um modelo
-    Whisper pequeno e procura a palavra configurada no texto, com tolerancia a
-    erro de transcricao. Aceita qualquer palavra e qualquer idioma que o Whisper
-    cubra -- o que resolve o caso "quero que seja 'Sofia'" ou "quero em espanhol"
-    sem uma hora de treinamento.
+    How it works: when the VAD detects speech, it transcribes the window with a
+    small Whisper model and searches for the configured word in the text, with
+    transcription error tolerance. Accepts any word and any language that Whisper
+    covers -- which solves the case of "I want it to be 'Sofia'" or "I want it
+    in Spanish" without an hour of training.
 
-    CUSTO DE PRIVACIDADE, e e real: neste modo a fala e transcrita ANTES de haver
-    ativacao. Nao chega a ser transcricao continua -- so roda quando o VAD ve
-    fala, e nada e gravado nem sai da maquina -- mas a garantia "em DORMANT nada
-    e transcrito" nao vale aqui. Por isso nao e o padrao, e o --doctor avisa.
+    PRIVACY COST, and it's real: in this mode speech is transcribed BEFORE
+    activation. It's not quite continuous transcription -- it only runs when the
+    VAD detects speech, and nothing is recorded or leaves the machine -- but the
+    guarantee "in DORMANT nothing is transcribed" does not hold here. That's why
+    it's not the default, and --doctor warns about it.
 
-    O modelo 'tiny' basta: nao precisamos de transcricao boa, so de reconhecer
-    uma palavra. Custa ~75 MB e ~80 ms por janela.
+    The 'tiny' model is enough: we don't need good transcription, just word
+    recognition. Costs ~75 MB and ~80 ms per window.
     """
 
     frame_length = 1280
@@ -116,7 +117,7 @@ class KeywordSpotter:
         from faster_whisper import WhisperModel  # type: ignore
 
         if not words:
-            raise ValueError("Nenhuma palavra configurada em WAKE_WORDS.")
+            raise ValueError("No word configured in WAKE_WORDS.")
         self._words = tuple(w.strip().lower() for w in words if w.strip())
         self._tolerance = tolerance
         self._language = language or None
@@ -126,8 +127,8 @@ class KeywordSpotter:
         compute = "int8" if device == "cpu" else "int8_float16"
         self._stt = WhisperModel(model, device=device, compute_type=compute)
         log.warning(
-            "Palavra de ativacao por transcricao: %s. Neste modo a fala e "
-            "transcrita antes da ativacao -- ver SECURITY.md.",
+            "Transcription-based wake word: %s. In this mode speech is "
+            "transcribed before activation -- see SECURITY.md.",
             ", ".join(self._words),
         )
 
@@ -149,12 +150,12 @@ class KeywordSpotter:
             vad_filter=False,
             condition_on_previous_text=False,
         )
-        texto = " ".join(s.text for s in segments).lower()
-        if not texto.strip():
+        text = " ".join(s.text for s in segments).lower()
+        if not text.strip():
             return False
-        for palavra in self._words:
-            if matches(palavra, texto, self._tolerance):
-                log.debug("Ativacao por '%s' em %r", palavra, texto.strip()[:50])
+        for word in self._words:
+            if matches(word, text, self._tolerance):
+                log.debug("Activation by '%s' in %r", word, text.strip()[:50])
                 self._buf = np.zeros(0, dtype=np.float32)
                 return True
         return False
@@ -164,84 +165,84 @@ class KeywordSpotter:
 
 
 def _levenshtein(a: str, b: str, cap: int) -> int:
-    """Distancia de edicao com corte precoce. Retorna cap+1 se exceder."""
+    """Edit distance with early cutoff. Returns cap+1 if exceeded."""
     if abs(len(a) - len(b)) > cap:
         return cap + 1
-    anterior = list(range(len(b) + 1))
+    previous = list(range(len(b) + 1))
     for i, ca in enumerate(a, 1):
-        atual = [i]
+        current = [i]
         for j, cb in enumerate(b, 1):
-            atual.append(
+            current.append(
                 min(
-                    anterior[j] + 1,  # remocao
-                    atual[j - 1] + 1,  # insercao
-                    anterior[j - 1] + (ca != cb),  # substituicao
+                    previous[j] + 1,  # deletion
+                    current[j - 1] + 1,  # insertion
+                    previous[j - 1] + (ca != cb),  # substitution
                 )
             )
-        if min(atual) > cap:
+        if min(current) > cap:
             return cap + 1
-        anterior = atual
-    return anterior[-1]
+        previous = current
+    return previous[-1]
 
 
-_ACENTOS = str.maketrans("áàãâäéèêëíìîïóòõôöúùûüçñ", "aaaaaeeeeiiiiooooouuuucn")
+_ACCENTS = str.maketrans("áàãâäéèêëíìîïóòõôöúùûüçñ", "aaaaaeeeeiiiiooooouuuucn")
 
 
 def _fold(s: str) -> str:
-    return s.lower().translate(_ACENTOS)
+    return s.lower().translate(_ACCENTS)
 
 
 def default_tolerance(word: str) -> int:
-    """Quantas edicoes aceitar por token.
+    """How many edits to accept per token.
 
-    Teto de 1 de proposito. Com 2, "computador" passa a aceitar "compilador" --
-    e ativacao falsa e pior que ativacao perdida: o assistente responde do nada
-    no meio de outra conversa.
+    Capped at 1 on purpose. With 2, "computer" starts accepting "compiler" --
+    and false activation is worse than missed activation: the assistant responds
+    out of nowhere in the middle of another conversation.
 
-    Para recuperar as variantes que o Whisper realmente produz na SUA voz, nao
-    suba a tolerancia: adicione apelidos.
+    To recover the variants that Whisper actually produces with YOUR voice,
+    don't increase the tolerance: add aliases.
 
         WAKE_WORDS=jarvis,jarvez,gervis
 
-    Lista exata nao introduz colisao nova, ao contrario de afrouxar o limiar.
+    An exact list introduces no new collisions, unlike loosening the threshold.
     """
     return 0 if len(word) <= 4 else 1
 
 
 def matches(word: str, text: str, tolerance: int | None = None) -> bool:
-    """True se algum token do texto for a palavra, dentro da tolerancia.
+    """True if any text token matches the word, within tolerance.
 
-    Trabalha token a token e nao por substring, para "filosofia" nao ativar
-    "sofia". Aceita sufixo de plural.
+    Works token by token and not by substring, so "philosophy" doesn't activate
+    "sophy". Accepts plural suffixes.
 
-    Limite inerente a esta abordagem: palavra parecida com palavra comum gera
-    falso positivo. "hermes" colide com "herpes" a uma edicao; "sofia" com
-    "sofa". Escolha palavra distintiva, de tres silabas ou mais, e verifique
-    colisao antes de adotar. Vale para qualquer sistema de wake word.
+    Inherent limitation of this approach: a word similar to a common word
+    generates false positives. "hermes" collides with "herpes" at one edit;
+    "sofia" with "sofa". Choose a distinctive word, three syllables or more,
+    and check collisions before adopting. Applies to any wake word system.
 
-    Este modo e menos preciso que um modelo treinado. Quando o openWakeWord
-    tiver um modelo para a sua palavra, prefira-o.
+    This mode is less accurate than a trained model. When openWakeWord has
+    a model for your word, prefer it.
     """
-    alvo = _fold(word)
-    cap = default_tolerance(alvo) if tolerance is None else tolerance
+    target = _fold(word)
+    cap = default_tolerance(target) if tolerance is None else tolerance
     for token in re.findall(r"[^\W\d_]+", _fold(text), re.UNICODE):
-        if token == alvo:
+        if token == target:
             return True
-        if token.endswith("s") and token[:-1] == alvo:
+        if token.endswith("s") and token[:-1] == target:
             return True
-        if token.endswith("es") and token[:-2] == alvo:
+        if token.endswith("es") and token[:-2] == target:
             return True
-        if cap and _levenshtein(token, alvo, cap) <= cap:
+        if cap and _levenshtein(token, target, cap) <= cap:
             return True
     return False
 
 
 class AlwaysOpen:
-    """Sem palavra de ativacao: qualquer fala abre a sessao.
+    """No wake word: any speech opens the session.
 
-    Util em fone de ouvido e sala silenciosa, e o unico modo que funciona sem
-    baixar nada. O custo e que conversa de fundo tambem dispara -- e, ao
-    contrario dos outros modos, o audio de qualquer fala e transcrito.
+    Useful with headphones and a quiet room, and is the only mode that works
+    without downloading anything. The cost is that background conversation also
+    triggers -- and, unlike other modes, any speech audio is transcribed.
     """
 
     frame_length = 1280
@@ -249,13 +250,13 @@ class AlwaysOpen:
 
     def __init__(self) -> None:
         log.warning(
-            "Modo sem palavra de ativacao: qualquer fala abre a sessao, e "
-            "qualquer fala sera transcrita. Use fone e sala silenciosa."
+            "No-wake-word mode: any speech opens the session, and "
+            "any speech will be transcribed. Use headphones and a quiet room."
         )
 
     def process(self, _frame: np.ndarray) -> bool:
-        # Nunca dispara: neste modo o loop consulta o VAD diretamente. O
-        # parametro existe para satisfazer o protocolo WakeBackend.
+        # Never fires: in this mode the loop queries the VAD directly. The
+        # parameter exists to satisfy the WakeBackend protocol.
         return False
 
     def close(self) -> None:
@@ -269,11 +270,11 @@ def build_wake(cfg) -> WakeBackend | None:
     if want == "open":
         return AlwaysOpen()
     if want == "keyword":
-        palavras = tuple(
+        words = tuple(
             w for w in (cfg.wake_words or "").replace(";", ",").split(",") if w.strip()
         )
         return KeywordSpotter(
-            palavras or ("jarvis",),
+            words or ("jarvis",),
             cfg.wake_keyword_model,
             cfg.wake_keyword_device,
             cfg.whisper_language,
@@ -288,16 +289,16 @@ def build_wake(cfg) -> WakeBackend | None:
         )
     except Exception as exc:
         log.error(
-            "openWakeWord indisponivel (%s).\n"
-            "  Instale com: pip install 'hermes-voice[wake]'\n"
-            "  Ou use: hermes-voice --trigger console",
+            "openWakeWord unavailable (%s).\n"
+            "  Install with: pip install 'hermes-voice[wake]'\n"
+            "  Or use: hermes-voice --trigger console",
             exc,
         )
         return None
 
 
 class FrameAdapter:
-    """Reagrupa frames de 512 amostras no tamanho que o backend exige (1280)."""
+    """Regroups 512-sample frames into the size the backend requires (1280)."""
 
     def __init__(self, backend: WakeBackend) -> None:
         self._backend = backend
@@ -311,7 +312,7 @@ class FrameAdapter:
             chunk, self._buf = self._buf[: self._need], self._buf[self._need :]
             if self._backend.process(chunk):
                 hit = True
-                self._buf = np.zeros(0, dtype=np.int16)  # evita disparo duplo
+                self._buf = np.zeros(0, dtype=np.int16)  # avoid double-fire
                 break
         return hit
 

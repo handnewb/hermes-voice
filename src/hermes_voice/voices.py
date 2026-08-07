@@ -1,18 +1,18 @@
-"""Catalogo de vozes: indice publico do Piper (35 idiomas) e Kokoro (9 idiomas).
+"""Voice catalog: public Piper index (35 languages) and Kokoro (9 languages).
 
-Duas fontes, duas naturezas:
+Two sources, two natures:
 
-  Piper   -- catalogo comunitario com centenas de vozes em 35 idiomas. Nao
-             fixamos uma lista aqui: consultamos o voices.json publicado no
-             Hugging Face em tempo de execucao, com verificacao de MD5 vinda do
-             proprio indice. Voz nova no upstream aparece sem release nosso.
+  Piper   -- community catalog with hundreds of voices in 35 languages. We
+             don't hardcode a list here: we query the voices.json published on
+             Hugging Face at runtime, with MD5 verification from the index
+             itself. A new upstream voice appears without a release from us.
 
-  Kokoro  -- um unico arquivo de pesos com 54 vozes embutidas, 9 idiomas. Lista
-             estatica porque nao ha o que descobrir: ou o arquivo esta ali, ou
-             nao esta.
+  Kokoro  -- a single weights file with 54 built-in voices, 9 languages. Static
+             list because there's nothing to discover: either the file is there,
+             or it isn't.
 
-Nada aqui exige conta, chave de API ou aceitar termos. Todo download e de fonte
-publica, com licenca declarada.
+Nothing here requires an account, API key, or accepting terms. Every download is
+from a public source, with declared license.
 """
 
 from __future__ import annotations
@@ -53,19 +53,19 @@ class DownloadError(RuntimeError):
 
 
 # ---------------------------------------------------------------------------
-# Kokoro: 54 vozes em 9 idiomas, num unico arquivo de pesos.
-# Prefixo: 1a letra = idioma, 2a = genero (f/m).
+# Kokoro: 54 voices in 9 languages, in a single weights file.
+# Prefix: 1st letter = language, 2nd = gender (f/m).
 # ---------------------------------------------------------------------------
 KOKORO_LANGS = {
-    "a": ("en_US", "Ingles americano"),
-    "b": ("en_GB", "Ingles britanico"),
-    "e": ("es", "Espanhol"),
-    "f": ("fr_FR", "Frances"),
+    "a": ("en_US", "American English"),
+    "b": ("en_GB", "British English"),
+    "e": ("es", "Spanish"),
+    "f": ("fr_FR", "French"),
     "h": ("hi", "Hindi"),
-    "i": ("it", "Italiano"),
-    "j": ("ja", "Japones"),
-    "p": ("pt_BR", "Portugues do Brasil"),
-    "z": ("zh", "Mandarim"),
+    "i": ("it", "Italian"),
+    "j": ("ja", "Japanese"),
+    "p": ("pt_BR", "Brazilian Portuguese"),
+    "z": ("zh", "Mandarin"),
 }
 
 KOKORO_VOICES: tuple[str, ...] = (
@@ -132,34 +132,34 @@ class Voice:
 
 
 # ---------------------------------------------------------------------------
-# Indice do Piper
+# Piper index
 # ---------------------------------------------------------------------------
 def _cache_path(root: Path) -> Path:
     return root / INDEX_CACHE
 
 
 def fetch_piper_index(root: Path, refresh: bool = False) -> dict:
-    """Baixa e cacheia o voices.json. Cache de 7 dias."""
+    """Downloads and caches voices.json. 7-day cache."""
     cache = _cache_path(root)
-    fresco = cache.exists() and time.time() - cache.stat().st_mtime < INDEX_MAX_AGE_S
-    if not refresh and fresco:
+    fresh = cache.exists() and time.time() - cache.stat().st_mtime < INDEX_MAX_AGE_S
+    if not refresh and fresh:
         try:
             return json.loads(cache.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            log.warning("Cache do indice corrompido; rebaixando.")
+            log.warning("Index cache corrupted; re-downloading.")
 
-    log.info("Buscando indice de vozes do Piper...")
+    log.info("Fetching Piper voice index...")
     try:
         req = urllib.request.Request(PIPER_INDEX_URL, headers={"User-Agent": "hermes-voice"})
         with urllib.request.urlopen(req, timeout=30) as r:
             raw = r.read().decode("utf-8")
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         if cache.exists():
-            log.warning("Indice inacessivel (%s); usando cache antigo.", exc)
+            log.warning("Index unreachable (%s); using old cache.", exc)
             return json.loads(cache.read_text(encoding="utf-8"))
         raise DownloadError(
-            f"Nao consegui buscar o indice de vozes ({exc}). "
-            "Verifique a conexao; nenhuma conta e necessaria."
+            f"Could not fetch voice index ({exc}). "
+            "Check your connection; no account is required."
         ) from exc
 
     cache.parent.mkdir(parents=True, exist_ok=True)
@@ -197,7 +197,7 @@ def _piper_voice_from_entry(key: str, entry: dict) -> Voice | None:
         quality=str(entry.get("quality") or "medium"),
         license="MIT",
         commercial=True,
-        notes=f"{speakers} locutores" if speakers > 1 else "",
+        notes=f"{speakers} speakers" if speakers > 1 else "",
         assets=assets,
     )
 
@@ -227,11 +227,11 @@ def kokoro_catalog() -> dict[str, Voice]:
             engine="kokoro",
             language=code,
             language_name=name,
-            gender="feminina" if vid[1] == "f" else "masculina",
-            quality="alta",
+            gender="female" if vid[1] == "f" else "male",
+            quality="high",
             license="Apache-2.0",
             commercial=True,
-            notes="pesos compartilhados entre todas as vozes Kokoro",
+            notes="shared weights across all Kokoro voices",
             assets=shared,
             voice_arg=vid,
         )
@@ -239,20 +239,20 @@ def kokoro_catalog() -> dict[str, Voice]:
 
 
 def full_catalog(root: Path, refresh: bool = False, include_piper: bool = True) -> dict[str, Voice]:
-    """Kokoro sempre; Piper quando o indice estiver acessivel."""
+    """Kokoro always; Piper when the index is reachable."""
     catalog = kokoro_catalog()
     if include_piper:
         try:
             catalog.update(piper_catalog(root, refresh))
         except DownloadError as exc:
-            log.warning("Catalogo do Piper indisponivel: %s", exc)
+            log.warning("Piper catalog unavailable: %s", exc)
     return catalog
 
 
 def search(
     catalog: dict[str, Voice], lang: str = "", gender: str = "", engine: str = "", quality: str = ""
 ) -> list[Voice]:
-    """Filtra por idioma (prefixo: 'pt' pega pt_BR e pt_PT), genero, engine."""
+    """Filter by language (prefix: 'pt' matches pt_BR and pt_PT), gender, engine."""
     lang, gender, engine, quality = (s.lower() for s in (lang, gender, engine, quality))
     hits = []
     for v in catalog.values():
@@ -271,8 +271,8 @@ def search(
 def languages(catalog: dict[str, Voice]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for v in catalog.values():
-        chave = f"{v.language}  {v.language_name}"
-        counts[chave] = counts.get(chave, 0) + 1
+        key = f"{v.language}  {v.language_name}"
+        counts[key] = counts.get(key, 0) + 1
     return dict(sorted(counts.items()))
 
 
@@ -310,22 +310,22 @@ def fetch(asset: Asset, root: Path, force: bool = False, progress: bool = True) 
     tmp = dest.with_suffix(dest.suffix + ".part")
     if progress:
         size = f" ({_human(asset.size_mb)})" if asset.size_bytes else ""
-        print(f"  baixando {dest.name}{size}...", flush=True)
+        print(f"  downloading {dest.name}{size}...", flush=True)
     try:
         req = urllib.request.Request(asset.url, headers={"User-Agent": "hermes-voice"})
         with urllib.request.urlopen(req, timeout=120) as r, tmp.open("wb") as fh:
             shutil.copyfileobj(r, fh, length=1 << 20)
     except (urllib.error.URLError, OSError, TimeoutError) as exc:
         tmp.unlink(missing_ok=True)
-        raise DownloadError(f"Falha ao baixar {asset.url}: {exc}") from exc
+        raise DownloadError(f"Failed to download {asset.url}: {exc}") from exc
 
     if asset.md5:
         digest = hashlib.md5(tmp.read_bytes(), usedforsecurity=False).hexdigest()
         if digest != asset.md5:
             tmp.unlink(missing_ok=True)
             raise DownloadError(
-                f"MD5 divergente em {dest.name}: indice diz {asset.md5[:12]}, "
-                f"o arquivo baixado da {digest[:12]}"
+                f"MD5 mismatch for {dest.name}: index says {asset.md5[:12]}, "
+                f"the downloaded file gave {digest[:12]}"
             )
     tmp.replace(dest)
     if dest.suffix in {".zip", ".gz"}:
@@ -334,14 +334,14 @@ def fetch(asset: Asset, root: Path, force: bool = False, progress: bool = True) 
 
 
 def _verify(path: Path, asset: Asset) -> bool:
-    """Tamanho e MD5 quando o indice fornece. Sem eles, presenca basta."""
+    """Size and MD5 when the index provides them. Without them, presence is enough."""
     if asset.size_bytes and path.stat().st_size != asset.size_bytes:
-        log.warning("%s com tamanho inesperado; rebaixando.", path.name)
+        log.warning("%s has unexpected size; re-downloading.", path.name)
         return False
     if asset.md5:
         digest = hashlib.md5(path.read_bytes(), usedforsecurity=False).hexdigest()
         if digest != asset.md5:
-            log.warning("%s com MD5 divergente; rebaixando.", path.name)
+            log.warning("%s has mismatched MD5; re-downloading.", path.name)
             return False
     return True
 
@@ -354,7 +354,7 @@ def _extract(archive: Path) -> None:
     else:
         with tarfile.open(archive, "r:gz") as tf:
             try:
-                tf.extractall(target, filter="data")  # evita path traversal
+                tf.extractall(target, filter="data")  # avoids path traversal
             except TypeError:  # Python < 3.12
                 tf.extractall(target)
     archive.unlink(missing_ok=True)
@@ -382,47 +382,47 @@ def is_installed(voice: Voice, root: Path) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Apresentacao
+# Display
 # ---------------------------------------------------------------------------
 def describe(catalog: dict[str, Voice], root: Path, lang: str = "", limit: int = 40) -> str:
     hits = search(catalog, lang=lang)
-    linhas = [""]
+    lines = [""]
     if lang:
-        linhas.append(f"Vozes para '{lang}': {len(hits)} encontradas.")
+        lines.append(f"Voices for '{lang}': {len(hits)} found.")
     else:
-        linhas.append(
-            f"{len(catalog)} vozes em {len(languages(catalog))} idiomas. Filtre com --lang."
+        lines.append(
+            f"{len(catalog)} voices in {len(languages(catalog))} languages. Filter with --lang."
         )
-    linhas += [
+    lines += [
         "",
-        f"  {'ID':<30}{'IDIOMA':<9}{'ENGINE':<9}{'GENERO':<11}{'LIC.':<12}INSTALADA",
+        f"  {'ID':<30}{'LANG':<9}{'ENGINE':<9}{'GENDER':<11}{'LIC.':<12}INSTALLED",
         "  " + "-" * 84,
     ]
     for v in hits[:limit]:
-        marca = "sim" if is_installed(v, root) else "nao"
-        padrao = "  <- padrao" if v.id == DEFAULT_VOICE else ""
-        linhas.append(
-            f"  {v.id:<30}{v.language:<9}{v.engine:<9}{v.gender:<11}{v.license:<12}{marca}{padrao}"
+        mark = "yes" if is_installed(v, root) else "no"
+        default = "  <- default" if v.id == DEFAULT_VOICE else ""
+        lines.append(
+            f"  {v.id:<30}{v.language:<9}{v.engine:<9}{v.gender:<11}{v.license:<12}{mark}{default}"
         )
     if len(hits) > limit:
-        linhas.append(f"  ... e {len(hits) - limit} outras. Filtre com --lang.")
-    linhas += [
+        lines.append(f"  ... and {len(hits) - limit} more. Filter with --lang.")
+    lines += [
         "",
-        "  Instalar:  hermes-voice voices --install <ID>",
-        "  Idiomas:   hermes-voice voices --languages",
-        "  Usar:      hermes-voice --voice <ID>",
+        "  Install:  hermes-voice voices --install <ID>",
+        "  Languages: hermes-voice voices --languages",
+        "  Use:       hermes-voice --voice <ID>",
         "",
-        "  Piper e MIT, Kokoro e Apache-2.0: as duas permitem uso comercial.",
-        "  Sobre clonagem de voz e direitos: docs/VOICE_LICENSING.md",
+        "  Piper is MIT, Kokoro is Apache-2.0: both allow commercial use.",
+        "  About voice cloning and rights: docs/VOICE_LICENSING.md",
         "",
     ]
-    return "\n".join(linhas)
+    return "\n".join(lines)
 
 
 def describe_languages(catalog: dict[str, Voice]) -> str:
     counts = languages(catalog)
-    linhas = ["", f"{len(counts)} idiomas disponiveis:", ""]
-    for nome, n in counts.items():
-        linhas.append(f"  {nome:<38}{n:>4} voz(es)")
-    linhas += ["", "  Filtre com: hermes-voice voices --lang <codigo>", ""]
-    return "\n".join(linhas)
+    lines = ["", f"{len(counts)} languages available:", ""]
+    for name, n in counts.items():
+        lines.append(f"  {name:<38}{n:>4} voice(s)")
+    lines += ["", "  Filter with: hermes-voice voices --lang <code>", ""]
+    return "\n".join(lines)

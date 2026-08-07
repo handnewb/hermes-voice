@@ -1,7 +1,7 @@
-# Submissão ao Hermes Atlas — corpo da issue
+# Hermes Atlas submission — issue body
 
-Arquivo pronto para postar. Confira os dois critérios antes, revise as
-pendências no fim, e então:
+Ready-to-post file. Check both criteria first, review the pending items at the end,
+and then:
 
 ```bash
 gh issue create --repo ksimback/hermes-ecosystem \
@@ -9,22 +9,22 @@ gh issue create --repo ksimback/hermes-ecosystem \
   --body-file docs/atlas-submission.md
 ```
 
-**Critérios do Atlas** (só dois, e você atende os dois):
+**Atlas criteria** (only two, and you meet both):
 
-1. Ser especificamente construído para ou integrado ao Hermes Agent — sim, é uma
-   interface de voz para o Hermes Agent, com `SKILL.md` no padrão agentskills.io.
-2. Criado depois de 22 de julho de 2025 — sim.
+1. Be specifically built for or integrated with Hermes Agent — yes, it's a voice
+   interface for Hermes Agent, with a `SKILL.md` in the agentskills.io standard.
+2. Created after July 22, 2025 — yes.
 
-Não há mínimo de estrelas no Atlas. Já `get-hermes.ai/community` e
-`discoverhermes.com` exigem 50+ estrelas — deixe os dois para depois.
+There is no minimum star count on the Atlas. Meanwhile `get-hermes.ai/community`
+and `discoverhermes.com` require 50+ stars — leave those two for later.
 
-**Antes de postar, confirme:** o repositório está público, o CI está verde, há um
-release com tag, e existe um GIF ou vídeo curto no README. Esse último importa
-mais do que parece: o Atlas avalia por documentação, evidência de instalação,
-manutenção e adoção, e uma demonstração é a evidência de instalação mais direta
-que existe para uma ferramenta de voz.
+**Before posting, confirm:** the repository is public, CI is green, there's a
+tagged release, and there's a GIF or short video in the README. The last one
+matters more than it seems: the Atlas evaluates by documentation, installation
+evidence, maintenance, and adoption, and a demo is the most direct installation
+evidence there is for a voice tool.
 
-Apague tudo acima desta linha antes de postar.
+Delete everything above this line before posting.
 
 ---
 

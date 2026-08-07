@@ -1,46 +1,46 @@
-# Persona de voz — registro "mordomo" (pt-BR)
+# Voice persona — "butler" register
 
-Lido pelo `config.py` e injetado como prompt de sistema. Tudo antes do comentário
-HTML `PROMPT-BEGIN` é documentação e é descartado.
+Read by `config.py` and injected as the system prompt. Everything before the HTML
+comment `PROMPT-BEGIN` is documentation and is discarded.
 
-## Por que este arquivo importa mais que a escolha do TTS
+## Why this file matters more than the TTS choice
 
-A falha número um de assistente de voz é responder com um parágrafo que soa como
-um relatório sendo lido em voz alta. Timbre é o último 20% da experiência; o
-registro e o **comprimento** são os primeiros 80%.
+The number one failure of a voice assistant is responding with a paragraph that
+sounds like a report being read aloud. Timbre is the last 20% of the experience;
+the register and the **length** are the first 80%.
 
-O limite de duas frases é a regra mais importante do prompt abaixo. Se você for
-mexer em uma coisa só, mexa nele.
+The two-sentence limit is the most important rule in the prompt below. If you're
+going to change one thing, change that.
 
-## Como ajustar
+## How to adjust
 
-| Sintoma | Onde mexer |
+| Symptom | Where to change |
 |---|---|
-| Respostas longas, soa como relatório | Endureça o limite de frases |
-| Seco demais, desagradável | Afrouxe a regra de ironia |
-| Lê URL, hash ou caminho em voz alta | Reforce a regra correspondente |
-| Explica o óbvio | Ajuste a seção "Contexto" para o seu nível |
+| Long responses, sounds like a report | Tighten the sentence limit |
+| Too dry, unpleasant | Loosen the irony rule |
+| Reads URL, hash, or path aloud | Reinforce the corresponding rule |
+| Explains the obvious | Adjust the "Context" section to your level |
 
-Não mexa nas regras de **formato**. Elas existem porque ninguém escuta bullet
-point, e o modelo vai insistir em produzi-los se você deixar.
+Don't touch the **format** rules. They exist because nobody listens to bullet
+points, and the model will insist on producing them if you let it.
 
-## Nota sobre licenciamento de voz
+## Note on voice licensing
 
-Esta persona é original. Ela não reproduz nem imita a voz, o texto ou a
-performance de nenhuma pessoa ou personagem específico — descreve um registro de
-fala (formal, contido, econômico), que não é propriedade de ninguém.
+This persona is original. It does not reproduce or imitate the voice, text, or
+performance of any specific person or character — it describes a speech register
+(formal, restrained, economical), which isn't anyone's property.
 
-Se você quiser um timbre específico, o caminho limpo é Voice Design da ElevenLabs:
-gera voz inédita a partir de descrição textual. Há um prompt de exemplo no
-`README.md`. Clonar a voz de pessoa real a partir de amostra não é suportado
-neste projeto — ver `CONTRIBUTING.md`.
+If you want a specific timbre, the clean path is ElevenLabs Voice Design: it
+generates a novel voice from a textual description. There's an example prompt in
+`README.md`. Cloning a real person's voice from a sample is not supported in this
+project — see `CONTRIBUTING.md`.
 
-## Onde o arquivo vive
+## Where the file lives
 
-O arquivo canonico e `src/hermes_voice/data/persona.md`, empacotado no wheel
-para funcionar numa instalacao por pip. Para customizar sem editar o pacote:
+The canonical file is `src/hermes_voice/data/persona.md`, packaged in the wheel
+so it works in a pip install. To customize without editing the package:
 
 ```bash
-cp src/hermes_voice/data/persona.md minha_persona.md
-echo 'PERSONA_FILE=minha_persona.md' >> .env
+cp src/hermes_voice/data/persona.md my_persona.md
+echo 'PERSONA_FILE=my_persona.md' >> .env
 ```

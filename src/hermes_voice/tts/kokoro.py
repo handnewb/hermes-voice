@@ -1,16 +1,16 @@
-"""Kokoro-82M: pesos Apache-2.0, uso comercial liberado, sem PyTorch.
+"""Kokoro-82M: Apache-2.0 weights, commercial use allowed, no PyTorch.
 
-Escolhido em vez de alternativas melhores em qualidade absoluta porque a licenca
-e limpa: Apache-2.0 nos pesos significa que quem usar este projeto pode embarcar
-a voz num produto comercial sem pedir permissao a ninguem. XTTS-v2, por exemplo,
-tem pesos non-commercial -- ver docs/VOICE_LICENSING.md.
+Chosen over alternatives with better absolute quality because the license is
+clean: Apache-2.0 on the weights means whoever uses this project can embed the
+voice in a commercial product without asking anyone's permission. XTTS-v2, for
+example, has non-commercial weights -- see docs/VOICE_LICENSING.md.
 
-Rodamos via kokoro-onnx (MIT) e nao via o pacote 'kokoro' oficial, porque o
-oficial arrasta PyTorch (~2,5 GB) e este projeto ja tem onnxruntime instalado
-para o VAD. Modelo ~327 MB, baixado uma vez, sem conta e sem chave.
+We run via kokoro-onnx (MIT) and not the official 'kokoro' package, because the
+official one pulls in PyTorch (~2.5 GB) and this project already has onnxruntime
+installed for the VAD. Model ~327 MB, downloaded once, no account and no key.
 
-Nao faz clonagem de voz: sao vozes fixas de preset. Para este projeto isso e
-vantagem, nao limitacao.
+No voice cloning: these are fixed preset voices. For this project that's an
+advantage, not a limitation.
 """
 
 from __future__ import annotations
@@ -23,11 +23,11 @@ import numpy as np
 
 log = logging.getLogger("hermes.tts.kokoro")
 
-# pt-BR no Kokoro v1.0: 1 feminina, 2 masculinas. lang_code 'p'.
+# pt-BR in Kokoro v1.0: 1 female, 2 male. lang_code 'p'.
 VOICES = {
-    "pm_alex": ("masculina", "Voz masculina pt-BR. A mais proxima do registro contido."),
-    "pm_santa": ("masculina", "Masculina, mais grave e lenta."),
-    "pf_dora": ("feminina", "Feminina pt-BR."),
+    "pm_alex": ("male", "Male pt-BR voice. Closest to a contained register."),
+    "pm_santa": ("male", "Male, deeper and slower."),
+    "pf_dora": ("female", "Female pt-BR."),
 }
 DEFAULT_VOICE = "pm_alex"
 LANG_CODE = "p"
@@ -46,29 +46,29 @@ class Kokoro:
     ) -> None:
         from kokoro_onnx import Kokoro as _Kokoro  # type: ignore
 
-        for label, path in (("modelo", model_path), ("vozes", voices_path)):
+        for label, path in (("model", model_path), ("voices", voices_path)):
             if not Path(path).exists():
                 raise FileNotFoundError(
-                    f"Arquivo de {label} do Kokoro ausente: {path}. "
-                    "Rode: hermes-voice voices --install kokoro"
+                    f"Kokoro {label} file missing: {path}. "
+                    "Run: hermes-voice voices --install kokoro"
                 )
         if voice not in VOICES:
-            raise ValueError(f"Voz '{voice}' nao e pt-BR. Opcoes: {', '.join(VOICES)}")
+            raise ValueError(f"Voice '{voice}' is not pt-BR. Options: {', '.join(VOICES)}")
 
         self._k = _Kokoro(model_path, voices_path)
         self._voice = voice
         self._speed = max(0.5, min(2.0, speed))
-        log.info("Kokoro pronto: voz '%s', velocidade %.2f.", voice, self._speed)
+        log.info("Kokoro ready: voice '%s', speed %.2f.", voice, self._speed)
 
     def synth(self, text: str) -> Iterator[bytes]:
-        # create() devolve float32 no sample rate do modelo.
+        # create() returns float32 at the model's sample rate.
         samples, rate = self._k.create(text, voice=self._voice, speed=self._speed, lang=LANG_CODE)
         audio = np.asarray(samples, dtype=np.float32)
         rate = int(rate)
         if rate != self.sample_rate:
             audio = _resample(audio, rate, self.sample_rate)
         np.clip(audio, -1.0, 1.0, out=audio)
-        # Fatia em pedacos para o Speaker poder interromper no meio da frase.
+        # Slices into chunks so the Speaker can interrupt mid-phrase.
         step = 4096
         pcm = (audio * 32767.0).astype("<i2")
         for i in range(0, pcm.size, step):
@@ -79,7 +79,7 @@ class Kokoro:
 
 
 def _resample(x: np.ndarray, src: int, dst: int) -> np.ndarray:
-    """Linear. Suficiente: so corrige divergencia de sample rate do modelo."""
+    """Linear. Sufficient: only corrects model sample rate divergence."""
     if src == dst or x.size == 0:
         return x
     n = round(x.size * dst / src)

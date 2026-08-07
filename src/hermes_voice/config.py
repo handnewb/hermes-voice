@@ -1,4 +1,4 @@
-"""Configuracao do loop de voz. Carrega .env sem depender de python-dotenv."""
+"""Voice loop configuration. Loads .env without depending on python-dotenv."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ PACKAGED_PERSONA = PKG / "data" / "persona.md"
 
 
 def _data_root() -> Path:
-    """Onde vozes e modelos vivem.
+    """Where voices and models live.
 
-    Num checkout do repositorio, a raiz do projeto. Instalado por pip, um
-    diretorio no home do usuario -- escrever dentro de site-packages e errado.
+    In a repo checkout, the project root. Installed via pip, a directory in the
+    user's home -- writing inside site-packages is wrong.
     """
     for parent in (PKG.parent.parent, PKG.parent):
         if (parent / "pyproject.toml").exists():
@@ -29,7 +29,7 @@ ROOT = _data_root()
 
 
 def load_dotenv(path: Path | None = None) -> None:
-    """Le um .env simples (KEY=VALUE) e popula os.environ sem sobrescrever."""
+    """Reads a simple .env (KEY=VALUE) and populates os.environ without overwriting."""
     path = path or (ROOT / ".env")
     if not path.exists():
         return
@@ -62,7 +62,7 @@ def _env_float(key: str, default: float) -> float:
 
 
 def _env_opt_float(key: str) -> float | None:
-    """None quando nao definido, para distinguir de zero explicito."""
+    """None when not set, to distinguish from explicit zero."""
     raw = os.environ.get(key, "").strip()
     if not raw:
         return None
@@ -92,10 +92,10 @@ class Config:
     whisper_language: str = "pt"
     whisper_hint: str = ""
 
-    # --- TTS: somente engines locais, sem chave nem cadastro ---
+    # --- TTS: local engines only, no key or registration ---
     tts_backend: str = "auto"  # auto | kokoro | piper-python | piper-binary | none
-    voice: str = ""  # id do catalogo; vazio = padrao da engine
-    data_dir: str = ""  # onde vozes e modelos vivem
+    voice: str = ""  # catalog id; empty = engine default
+    data_dir: str = ""  # where voices and models live
 
     piper_model: str = ""
     piper_binary: str = ""
@@ -104,7 +104,7 @@ class Config:
     kokoro_voice: str = "pm_alex"
     kokoro_speed: float = 0.95
 
-    # --- DSP de presenca ---
+    # --- Presence DSP ---
     dsp_preset: str = "off"  # off | room | close | hall | intercom
     dsp_reverb_mix: float | None = None
     dsp_presence_gain_db: float | None = None
@@ -114,22 +114,22 @@ class Config:
     # --- Audio ---
     input_device: str = ""
     output_device: str = ""
-    sample_rate: int = 16000  # exigido pelo Whisper
+    sample_rate: int = 16000  # required by Whisper
     max_record_seconds: float = 45.0
 
-    # --- Wake word: openWakeWord, sem conta ---
+    # --- Wake word: openWakeWord, no account ---
     wake_backend: str = "auto"  # auto | open | none
     wake_model: str = "hey_jarvis"
     wake_model_path: str = ""
     wake_threshold: float = 0.5
     wake_auto_download: bool = True
-    # Modo keyword: palavra arbitraria via transcricao. Ver SECURITY.md.
+    # Keyword mode: arbitrary word via transcription. See SECURITY.md.
     wake_words: str = "jarvis"
     wake_keyword_model: str = "tiny"
     wake_keyword_device: str = "cpu"
-    wake_tolerance: int = -1  # -1 = automatico por tamanho da palavra
+    wake_tolerance: int = -1  # -1 = automatic by word length
 
-    # --- VAD / fim de fala ---
+    # --- VAD / end of speech ---
     vad_backend: str = "auto"  # auto | silero | energy
     vad_model: str = ""
     vad_threshold: float = 0.5
@@ -140,7 +140,7 @@ class Config:
     max_utterance_seconds: float = 30.0
     half_duplex: bool = True
 
-    # --- Fluidez ---
+    # --- Fluidity ---
     adaptive_endpoint: bool = True
     endpoint_short_ms: int = 380
     endpoint_long_ms: int = 1250
@@ -149,7 +149,7 @@ class Config:
     echo_margin_db: float = 7.0
     echo_trigger_frames: int = 3
 
-    # --- Interacao ---
+    # --- Interaction ---
     ptt_key: str = "f9"
     quit_key: str = "esc"
     persona_file: str = str(PACKAGED_PERSONA)
@@ -228,12 +228,12 @@ class Config:
         d.resolve_paths()
         return d
 
-    # Unico segredo que resta no projeto: nao ha chave de TTS nem de wake word,
-    # porque todas as engines rodam locais.
+    # The only secret remaining in the project: no TTS or wake word key,
+    # because all engines run locally.
     SECRET_FIELDS = ("hermes_api_key",)
 
     def redacted(self) -> dict:
-        """Config segura para log, --doctor e relatorio de bug."""
+        """Safe config for logging, --doctor, and bug reports."""
         out = {}
         for name in self.__slots__:
             if name == "extra":
@@ -245,9 +245,9 @@ class Config:
         return out
 
     def resolve_paths(self) -> None:
-        """Preenche caminhos de modelo a partir do id da voz e do data_dir.
+        """Fills in model paths from voice id and data_dir.
 
-        Deixa o .env enxuto: normalmente basta VOICE=<id>.
+        Keeps .env lean: typically just VOICE=<id> is enough.
         """
         from .voices import DEFAULT_VOICE, KOKORO_LANGS
 
@@ -257,7 +257,7 @@ class Config:
         voice_id = self.voice or DEFAULT_VOICE
         self.voice = voice_id
 
-        # Vozes do Kokoro tem prefixo de idioma+genero e nao contem hifen.
+        # Kokoro voices have language+gender prefix and do not contain hyphens.
         is_kokoro = (
             len(voice_id) > 3
             and voice_id[0] in KOKORO_LANGS
@@ -291,12 +291,12 @@ class Config:
             path = PACKAGED_PERSONA
         if not path.exists():
             return (
-                "Voce e o Hermes, assistente pessoal por voz. Trate o usuario como "
-                "'senhor'. Responda em no maximo 2 frases, sem listas nem markdown."
+                "You are Hermes, a personal voice assistant. Address the user as "
+                "'sir'. Answer in at most 2 sentences, without lists or markdown."
             )
         text = path.read_text(encoding="utf-8")
-        # Remove o cabecalho de documentacao, mantendo apenas as diretrizes.
-        # rsplit e nao split: o cabecalho pode citar o marcador ao se explicar.
+        # Remove the documentation header, keeping only the directives.
+        # rsplit and not split: the header may cite the marker when explaining itself.
         marker = "<!-- PROMPT-BEGIN -->"
         if marker in text:
             text = text.rsplit(marker, 1)[1]

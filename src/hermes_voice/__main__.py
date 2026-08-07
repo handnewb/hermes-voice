@@ -1,4 +1,4 @@
-"""Permite `python -m hermes_voice`."""
+"""Allows `python -m hermes_voice`."""
 
 from __future__ import annotations
 

@@ -1,33 +1,36 @@
-"""Supressao de eco por referencia: barge-in de verdade, sem dependencia externa.
+"""Reference-based echo suppression: real barge-in, no external dependency.
 
-## O problema
+## The problem
 
-Com microfone aberto e caixas de som, o VAD ouve a propria voz sintetizada e o
-assistente conversa consigo mesmo. A solucao padrao e meia-duplex: nao escutar
-enquanto fala. Funciona, mas mata a fluidez -- conversa humana tem sobreposicao,
-e nao poder interromper e o que faz um assistente parecer uma arvore de menu.
+With an open mic and speakers, the VAD hears the synthesized voice itself and
+the assistant talks to itself. The standard solution is half-duplex: don't
+listen while speaking. It works, but kills fluidity -- human conversation has
+overlap, and not being able to interrupt is what makes an assistant feel like
+a menu tree.
 
-## A abordagem
+## The approach
 
-Isto NAO e cancelamento de eco (AEC). AEC de verdade estima a resposta impulsiva
-da sala com filtro adaptativo e subtrai o eco do sinal, permitindo transcrever a
-fala do usuario mesmo sobreposta. Precisa de alinhamento temporal preciso e, em
-geral, de biblioteca nativa.
+This is NOT acoustic echo cancellation (AEC). True AEC estimates the room's
+impulse response with an adaptive filter and subtracts the echo from the signal,
+allowing transcription of the user's overlapping speech. It requires precise
+time alignment and, generally, a native library.
 
-O que fazemos e mais modesto e resolve o caso que importa: **decidir se o que o
-microfone captou e o usuario ou o proprio alto-falante.** Como nos geramos o
-audio de saida, sabemos exatamente o que foi enviado. Comparamos a energia do
-microfone com a energia esperada da referencia, alinhada por correlacao cruzada,
-e so declaramos "o usuario esta falando" quando a energia excede a referencia por
-uma margem. Sem subtracao, sem filtro adaptativo, ~200 linhas de numpy.
+What we do is more modest and solves the case that matters: **deciding whether
+what the microphone captured is the user or the speaker itself.** Since we
+generate the output audio, we know exactly what was sent. We compare the
+microphone energy with the expected energy of the reference, aligned by
+cross-correlation, and only declare "the user is speaking" when the energy
+exceeds the reference by a margin. No subtraction, no adaptive filter, ~200
+lines of numpy.
 
-## Consequencia pratica
+## Practical consequence
 
-Voce consegue interromper falando mais alto que a caixa. Nao consegue conversar
-sobreposto em volume baixo. Com fone, nada disso e necessario: nao ha eco.
+You can interrupt by speaking louder than the speaker. You can't hold an
+overlapping conversation at low volume. With headphones, none of this is
+necessary: there is no echo.
 
-Degrada com seguranca: se nao consegue estimar o atraso com confianca, volta a
-meia-duplex em vez de deixar o assistente em loop consigo mesmo.
+Degrades safely: if it can't estimate the delay with confidence, it falls
+back to half-duplex instead of letting the assistant loop with itself.
 """
 
 from __future__ import annotations
@@ -46,24 +49,24 @@ EPS = 1e-9
 @dataclass(slots=True)
 class EchoConfig:
     enabled: bool = True
-    # Quanto a energia do microfone precisa exceder a referencia, em dB, para
-    # contar como fala do usuario. Abaixo de 4 dB gera falso positivo; acima de
-    # 12 exige grito.
+    # How much the microphone energy must exceed the reference, in dB, to
+    # count as user speech. Below 4 dB generates false positives; above
+    # 12 requires shouting.
     margin_db: float = 7.0
-    # Janela de busca do atraso entre saida e microfone.
+    # Delay search window between output and microphone.
     max_delay_ms: int = 320
-    # Frames consecutivos acima da margem para declarar barge-in. Evita disparo
-    # com um estalo.
+    # Consecutive frames above margin to declare barge-in. Prevents triggering
+    # on a click.
     trigger_frames: int = 3
 
 
 class EchoSuppressor:
-    """Compara microfone com a referencia de saida para detectar fala real.
+    """Compares microphone with output reference to detect real speech.
 
-    Uso:
-        supr.push_reference(pcm_bytes)     # o que foi enviado ao alto-falante
+    Usage:
+        supr.push_reference(pcm_bytes)     # what was sent to the speaker
         ...
-        if supr.is_user_speech(frame):     # frame do microfone
+        if supr.is_user_speech(frame):     # microphone frame
             barge_in()
     """
 
@@ -73,9 +76,9 @@ class EchoSuppressor:
         self.frame = frame_samples
 
         max_delay = int(sample_rate * config.max_delay_ms / 1000)
-        # Um segundo de historia alem do atraso maximo. Buffer curto era o
-        # primeiro bug: a referencia perdia o trecho que o microfone estava
-        # ouvindo, e a comparacao passava a olhar audio errado.
+        # One second of history beyond max delay. A short buffer was the first
+        # bug: the reference lost the segment the microphone was hearing, and
+        # the comparison would look at the wrong audio.
         self._ref = deque(maxlen=max_delay + sample_rate)
         self._margin = 10.0 ** (config.margin_db / 20.0)
 
@@ -84,9 +87,9 @@ class EchoSuppressor:
         self._since_lock = 0
         self._hot = 0
 
-    # -- referencia -----------------------------------------------------------
+    # -- reference -----------------------------------------------------------
     def push_reference(self, pcm_int16: bytes) -> None:
-        """Registra o audio entregue ao alto-falante."""
+        """Registers the audio delivered to the speaker."""
         if not self.cfg.enabled or not pcm_int16:
             return
         n = len(pcm_int16) - (len(pcm_int16) % 2)
@@ -105,26 +108,27 @@ class EchoSuppressor:
     def has_reference(self) -> bool:
         return len(self._ref) >= self.frame * 2
 
-    # -- decisao --------------------------------------------------------------
+    # -- decision --------------------------------------------------------------
     def is_user_speech(self, mic_float32: np.ndarray) -> bool:
-        """True quando o microfone contem fala que nao vem do alto-falante.
+        """True when the microphone contains speech that isn't from the speaker.
 
-        Em vez de estimar um unico atraso e confiar nele, perguntamos: existe
-        ALGUM alinhamento da referencia, dentro da janela de busca, que explique
-        a energia deste frame? Se existe, e eco. Isso e mais robusto que travar
-        um atraso, porque nao depende de o envelope ter estrutura suficiente
-        para correlacionar -- tom continuo, por exemplo, tem envelope plano.
+        Instead of estimating a single delay and trusting it, we ask: is there
+        ANY alignment of the reference, within the search window, that explains
+        this frame's energy? If so, it's echo. This is more robust than locking
+        a delay, because it doesn't depend on the envelope having enough
+        structure to correlate -- a continuous tone, for example, has a flat
+        envelope.
         """
         if not self.cfg.enabled:
             return False
 
         mic_rms = _rms(mic_float32)
-        if mic_rms < 0.008:  # silencio: nada a decidir
+        if mic_rms < 0.008:  # silence: nothing to decide
             self._hot = 0
             return False
 
         if not self.has_reference:
-            return self._accumulate(True)  # nada tocando: e o usuario
+            return self._accumulate(True)  # nothing playing: it's the user
 
         ref = np.fromiter(self._ref, dtype=np.float32, count=len(self._ref))
         n = mic_float32.size
@@ -132,16 +136,16 @@ class EchoSuppressor:
             return self._accumulate(True)
 
         residual = self._best_residual(ref, mic_float32)
-        # residual e a fracao da energia do microfone que a referencia NAO
-        # explica. Perto de 0 = eco puro. Perto de 1 = som independente.
+        # residual is the fraction of microphone energy that the reference does
+        # NOT explain. Near 0 = pure echo. Near 1 = independent sound.
         threshold = 1.0 / self._margin
         return self._accumulate(residual > threshold)
 
     def _best_residual(self, ref: np.ndarray, mic: np.ndarray) -> float:
-        """Menor residuo relativo sobre todos os atrasos da janela de busca."""
+        """Smallest relative residual over all delays in the search window."""
         n = mic.size
         max_delay = int(self.fs * self.cfg.max_delay_ms / 1000)
-        hop = max(1, n // 8)  # busca em passos, nao amostra a amostra
+        hop = max(1, n // 8)  # search in steps, not sample by sample
 
         mic_energy = float(np.dot(mic, mic)) + EPS
         best = 1.0
@@ -155,7 +159,7 @@ class EchoSuppressor:
             seg = ref[start:end]
             seg_energy = float(np.dot(seg, seg))
             if seg_energy > 1e-8:
-                # Ganho otimo por minimos quadrados, limitado a ganho fisico.
+                # Optimal gain by least squares, clamped to physical gain.
                 gain = float(np.clip(np.dot(mic, seg) / seg_energy, 0.0, 4.0))
                 resid = float(np.dot(mic - gain * seg, mic - gain * seg)) / mic_energy
                 if resid < best:
@@ -177,7 +181,7 @@ def _rms(x: np.ndarray) -> float:
 
 
 def build_echo(cfg, sample_rate: int, frame_samples: int = 512) -> EchoSuppressor | None:
-    """None quando meia-duplex esta ativo -- nao ha o que suprimir."""
+    """None when half-duplex is active -- nothing to suppress."""
     if getattr(cfg, "half_duplex", True):
         return None
     ec = EchoConfig(
@@ -185,5 +189,5 @@ def build_echo(cfg, sample_rate: int, frame_samples: int = 512) -> EchoSuppresso
         margin_db=getattr(cfg, "echo_margin_db", 7.0),
         trigger_frames=getattr(cfg, "echo_trigger_frames", 3),
     )
-    log.info("Supressao de eco ativa: margem %.1f dB. Fone ainda e melhor.", ec.margin_db)
+    log.info("Echo suppression active: margin %.1f dB. Headphones are still better.", ec.margin_db)
     return EchoSuppressor(ec, sample_rate, frame_samples)

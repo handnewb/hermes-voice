@@ -124,4 +124,4 @@ class TestPersona:
 
     def test_fallback_quando_arquivo_falta(self, monkeypatch, tmp_path):
         monkeypatch.setenv("PERSONA_FILE", str(tmp_path / "ausente.md"))
-        assert "senhor" in Config.from_env().persona()
+        assert "sir" in Config.from_env().persona()

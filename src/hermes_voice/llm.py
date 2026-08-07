@@ -1,8 +1,8 @@
-"""Cliente de streaming para o Hermes + fatiador de sentencas.
+"""Streaming client for Hermes + sentence chunker.
 
-O fatiador e a peca que corta 60-70% da latencia percebida: em vez de esperar a
-resposta inteira, a primeira frase vai para o TTS enquanto o modelo ainda gera a
-segunda.
+The chunker is the piece that cuts 60-70% of perceived latency: instead of
+waiting for the entire response, the first sentence goes to TTS while the model
+still generates the second.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ log = logging.getLogger("hermes.llm")
 HARD_STOPS = ".!?:;"
 SOFT_STOPS = ",)"
 
-# Abreviacoes pt-BR que terminam em ponto e NAO encerram frase.
+# Portuguese abbreviations that end with a period and do NOT end a sentence.
 ABBREVIATIONS = {
     "sr",
     "sra",
@@ -49,14 +49,14 @@ _BULLET = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+", re.MULTILINE)
 
 
 def clean_for_speech(text: str) -> str:
-    """Remove residuo de markdown que o modelo insiste em emitir."""
+    """Remove markdown residue that the model insists on emitting."""
     text = _BULLET.sub("", text)
     text = _MARKDOWN.sub(r"\1", text)
     return " ".join(text.split())
 
 
 class SentenceChunker:
-    """Acumula deltas de token e devolve trechos falaveis."""
+    """Accumulates token deltas and returns speakable segments."""
 
     def __init__(self, min_chars: int = 24, max_chars: int = 200) -> None:
         self.min_chars = min_chars
@@ -88,16 +88,16 @@ class SentenceChunker:
                 continue
             if ch == "\n":
                 return i + 1
-            # Lookahead obrigatorio: sem o proximo caractere nao ha como saber se
-            # o ponto encerra a frase ou faz parte de "3.5" / "12:30" / "Dr.".
-            # Se a pontuacao e o ultimo char do buffer, espera o proximo delta.
+            # Lookahead is mandatory: without the next character we can't know if
+            # the period ends the sentence or is part of "3.5" / "12:30" / "Dr.".
+            # If the punctuation is the last char in the buffer, wait for the next delta.
             if i + 1 >= len(buf):
                 break
             if ch in HARD_STOPS and self._is_boundary(buf, i):
                 return i + 1
 
-        # Sem pontuacao e o buffer esta longo: corta num limite razoavel para
-        # nao deixar o usuario esperando em silencio.
+        # No punctuation and the buffer is long: cut at a reasonable boundary
+        # so the user isn't left waiting in silence.
         if len(buf) >= self.max_chars:
             window = buf[: self.max_chars]
             for sep in (SOFT_STOPS, " "):
@@ -113,24 +113,24 @@ class SentenceChunker:
         prev = buf[i - 1] if i else ""
         nxt = buf[i + 1] if i + 1 < len(buf) else ""
 
-        # Decimais e milhares: 3.5 / 100.000 / 12:30
+        # Decimals and thousands: 3.5 / 100,000 / 12:30
         if prev.isdigit() and nxt.isdigit():
             return False
-        # Precisa de espaco ou fim de buffer depois da pontuacao
+        # Needs space or buffer end after punctuation
         if nxt and not nxt.isspace():
             return False
         if ch == ".":
             match = _TRAILING_WORD.search(buf[: i + 1])
             if match and match.group(1).lower() in ABBREVIATIONS:
                 return False
-            # Inicial isolada: "J. A. R. V. I. S."
+            # Isolated initial: "J. A. R. V. I. S."
             if len(prev) == 1 and prev.isupper() and (i < 2 or not buf[i - 2].isalpha()):
                 return False
         return True
 
 
 class HermesClient:
-    """Fala com um endpoint compativel com /v1/chat/completions em streaming."""
+    """Talks to an endpoint compatible with /v1/chat/completions in streaming."""
 
     def __init__(
         self,
@@ -168,13 +168,13 @@ class HermesClient:
         return msgs
 
     def stream(self, user_text: str) -> Iterator[str]:
-        """Emite deltas de texto. Ao final, grava o turno no historico."""
+        """Emits text deltas. At the end, records the turn in history."""
         payload = {
             "model": self.model,
             "messages": self._messages(user_text),
             "stream": True,
             "temperature": 0.4,
-            "max_tokens": 400,  # voz: respostas curtas por construcao
+            "max_tokens": 400,  # voice: short answers by construction
         }
         parts: list[str] = []
         try:
@@ -191,7 +191,7 @@ class HermesClient:
                     parts.append(delta)
                     yield delta
         except httpx.HTTPError as exc:
-            raise RuntimeError(f"Hermes inacessivel em {self.url}: {exc}") from exc
+            raise RuntimeError(f"Hermes unreachable at {self.url}: {exc}") from exc
         finally:
             answer = "".join(parts).strip()
             if answer:
@@ -200,7 +200,7 @@ class HermesClient:
 
 
 def _parse_sse(line: str) -> str | None:
-    """Extrai o delta de conteudo de uma linha SSE. None = ignorar."""
+    """Extracts the content delta from an SSE line. None = ignore."""
     if not line:
         return None
     if line.startswith("data:"):
@@ -218,6 +218,6 @@ def _parse_sse(line: str) -> str | None:
     delta = choice.get("delta") or {}
     content = delta.get("content")
     if content is None:
-        # Alguns servidores emitem 'text' (completions legado)
+        # Some servers emit 'text' (legacy completions)
         content = choice.get("text")
     return content if isinstance(content, str) else None

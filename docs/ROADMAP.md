@@ -1,111 +1,108 @@
 # Roadmap
 
-Estado atual: **v1.0.0**. Wake word, VAD, sessão contínua, quatro backends de TTS
-e o estágio de DSP estão prontos. O que falta está abaixo, com estimativa honesta
-de esforço.
+Current state: **v1.0.0**. Wake word, VAD, continuous session, four TTS backends,
+and the DSP stage are done. What's missing is below, with honest effort estimates.
 
 ---
 
-## ~~v1 — Wake word e fim de fala~~ — feito em 1.0.0
+## ~~v1 — Wake word and end-of-speech~~ — done in 1.0.0
 
-Substitui a tecla por escuta contínua. Duas peças:
+Replaces the key with continuous listening. Two pieces:
 
-**Silero VAD** (`snakers4/silero-vad`) — ONNX de ~2 MB, inferência em ~1 ms por
-janela de 30 ms. Substitui o release da tecla por detecção real de fim de fala.
-O parâmetro que importa é o silêncio mínimo: 300 ms parece agressivo mas é o que
-faz a conversa fluir; acima de 600 ms o assistente soa hesitante. Faça isso
-configurável e ajuste com o ouvido, não com a intuição.
+**Silero VAD** (`snakers4/silero-vad`) — ~2 MB ONNX, ~1 ms inference per 30 ms
+window. Replaces key release with real end-of-speech detection. The parameter that
+matters is the minimum silence: 300 ms seems aggressive but is what makes the
+conversation flow; above 600 ms the assistant sounds hesitant. Make this
+configurable and adjust by ear, not by intuition.
 
-**openWakeWord** — treine "Hermes" como palavra custom. Alternativa: Porcupine
-(Picovoice), melhor taxa de falso positivo, gratuito para uso pessoal.
+**openWakeWord** — train "Hermes" as a custom word. Alternative: Porcupine
+(Picovoice), better false positive rate, free for personal use.
 
-Onde encaixa: `audio_in.Recorder` já mantém o `InputStream` aberto durante toda a
-sessão exatamente por isso. Troque o gatilho por wake word e o `stop()` por VAD;
-o resto do pipeline não muda.
+Where it fits: `audio_in.Recorder` already keeps the `InputStream` open for the
+entire session precisely for this. Swap the trigger for wake word and `stop()` for
+VAD; the rest of the pipeline doesn't change.
 
-**Bônus inesperado:** wake word elimina o hook global de teclado, que é hoje o
-componente de maior atrito com EDR comportamental. Você troca uma assinatura de
-keylogger por microfone sempre ativo. Do ponto de vista do EDR é uma melhora
-clara; do ponto de vista de privacidade doméstica, o oposto. Decida com os dois
-lados na mesa, não só o primeiro.
+**Unexpected bonus:** wake word eliminates the global keyboard hook, which is
+currently the highest-friction component with behavioral EDR. You trade a keylogger
+signature for always-on microphone. From the EDR perspective it's a clear
+improvement; from the home privacy perspective, the opposite. Decide with both
+sides on the table, not just the first.
 
-**Consequência que não é técnica.** Wake word significa microfone sempre ativo
-numa máquina de trabalho, com a família por perto. Antes de ligar: defina que o
-ring buffer é circular e limitado (2-3 s bastam para não perder o início da
-frase), que ele nunca toca disco, e que a transcrição não vai para log
-persistente. Isto é T3 na skill por esse motivo.
+**Non-technical consequence.** Wake word means always-on microphone on a work
+machine, with family nearby. Before enabling: define that the ring buffer is
+circular and bounded (2-3 s are enough not to miss the start of a sentence), that
+it never touches disk, and that transcription doesn't go to a persistent log. This
+is T3 in the skill for that reason.
 
-## AEC — esforço alto, o item mais pedido
+## AEC — high effort, the most requested item
 
-Só necessário se você quiser falar com as caixas abertas. Com fone, pule.
+Only needed if you want to talk with open speakers. With headphones, skip.
 
-O problema: o microfone escuta a saída, o VAD dispara com a voz do próprio
-Hermes, e você entra em loop. Precisa de duas coisas:
+The problem: the microphone hears the output, the VAD triggers with Hermes's own
+voice, and you loop. Two things needed:
 
-1. **Sinal de referência** — captura loopback WASAPI da saída. No Windows,
-   `sounddevice` com `WasapiSettings(loopback=True)`, ou `soundcard` que expõe
-   isso de forma mais direta.
-2. **AEC** — `speexdsp` (`speexdsp-python`) ou o AEC do WebRTC via
-   `webrtc-audio-processing`. O WebRTC é melhor mas o binding em Python é
+1. **Reference signal** — WASAPI loopback capture of the output. On Windows,
+   `sounddevice` with `WasapiSettings(loopback=True)`, or `soundcard` which exposes
+   this more directly.
+2. **AEC** — `speexdsp` (`speexdsp-python`) or WebRTC AEC via
+   `webrtc-audio-processing`. WebRTC is better but the Python binding is
    irregular.
 
-Estimativa honesta: esta é a parte do projeto que vai consumir mais tempo, por
-uma margem grande. Alinhamento temporal entre o sinal de referência e o
-microfone é onde tudo dá errado — um offset de 20 ms degrada o cancelamento a
-ponto de ser inútil, e o offset varia com o driver.
+Honest estimate: this is the part of the project that will consume the most time,
+by a wide margin. Temporal alignment between the reference signal and the
+microphone is where everything goes wrong — a 20 ms offset degrades cancellation
+to the point of uselessness, and the offset varies with the driver.
 
-**Atalho pragmático:** meio-caminho que resolve 80% dos casos sem AEC. Enquanto
-o TTS está falando, suba o limiar do VAD e exija que a energia detectada supere
-a energia conhecida da saída por uma margem. Barato, funciona quando você fala
-mais alto que a caixa, e são ~30 linhas. Faça isto antes de tentar AEC de verdade.
+**Pragmatic shortcut:** a halfway solution that solves 80% of cases without AEC.
+While TTS is speaking, raise the VAD threshold and require the detected energy to
+exceed the known output energy by a margin. Cheap, works when you speak louder
+than the speakers, and it's ~30 lines. Do this before trying real AEC.
 
-## Piper persistente — esforço baixo, ganho de ~150 ms
+## Persistent Piper — low effort, ~150 ms gain
 
-Hoje `PiperBinary.synth` gera um processo por frase: ~150 ms de startup em cada
-uma. Some isso ao longo de uma resposta de quatro frases e você perde meio
-segundo.
+Today `PiperBinary.synth` spawns one process per sentence: ~150 ms startup per
+sentence. Sum that over a four-sentence response and you lose half a second.
 
-Solução: processo de longa duração alimentado por stdin. O obstáculo é que o
-`--output_raw` não delimita utterances no stdout, então você não sabe onde uma
-termina. Duas saídas: `--output-dir` com arquivos por frase (perde streaming), ou
-`--json-input` que retorna metadados por utterance. Vale medir se o ganho de
-150 ms justifica — se você migrar para Azure, o problema desaparece.
+Solution: long-lived process fed via stdin. The obstacle is that `--output_raw`
+doesn't delimit utterances in stdout, so you don't know where one ends. Two
+options: `--output-dir` with per-sentence files (loses streaming), or
+`--json-input` which returns metadata per utterance. Worth measuring whether the
+150 ms gain is justified — if you migrate to Azure, the problem disappears.
 
-## Ferramentas — esforço médio
+## Tools — medium effort
 
-O ponto onde isto deixa de ser um brinquedo. O Hermes já orquestra a frota do
-SOC; a voz passa a ser interface para consultar estado e disparar playbooks.
+The point where this stops being a toy. Hermes already orchestrates the SOC fleet;
+voice becomes an interface for querying state and triggering playbooks.
 
-Duas regras que não devem ceder:
+Two rules that must not yield:
 
-**Confirmação por voz para ação destrutiva, sempre.** Reconhecimento de fala
-erra, e um falso positivo que fecha ticket ou isola endpoint é caro. O
-`persona_jarvis_ptbr.md` já contém essa regra; ela precisa ser reforçada na
-camada de ferramenta, não confiada ao prompt.
+**Voice confirmation for destructive actions, always.** Speech recognition errs,
+and a false positive that closes a ticket or isolates an endpoint is expensive. The
+`persona_jarvis_ptbr.md` already contains this rule; it needs to be reinforced at
+the tool layer, not trusted to the prompt.
 
-**Nada de leitura de segredo em voz alta.** Vale a mesma proibição permanente
-que se aplica a qualquer cofre de segredos. Áudio é o pior canal possível para
-credencial: fica no ar da sala, não tem controle de acesso, e você não sabe quem
-está ouvindo.
+**No reading secrets aloud.** The same permanent prohibition that applies to any
+secrets vault holds. Audio is the worst possible channel for credentials: it hangs
+in the room's air, has no access control, and you don't know who's listening.
 
-## Não faça
+## Don't do
 
-**Speech-to-speech local em pt-BR.** Ainda não existe de forma decente. Moshi é
-inglês/francês, GLM-4-Voice é chinês/inglês, Qwen-Omni sintetiza só inglês e
-mandarim. Reavalie em uns seis meses; o campo se move rápido.
+**Local speech-to-speech in pt-BR.** Doesn't exist decently yet. Moshi is
+English/French, GLM-4-Voice is Chinese/English, Qwen-Omni synthesizes only English
+and Mandarin. Reassess in about six months; the field moves fast.
 
-**Clonagem de voz de pessoa real.** Coberto no `SKILL.md` como restrição T3.
+**Real-person voice cloning.** Covered in `SKILL.md` as a T3 restriction.
 
-**Otimizar antes de medir.** `--verbose` existe para isso. Quando a resposta
-parece lenta, o culpado costuma ser o tempo até o primeiro token do Hermes — não
-o STT nem o TTS, que é onde a intuição manda olhar.
+**Optimize before measuring.** `--verbose` exists for this. When the response feels
+slow, the culprit is usually the time to Hermes's first token — not STT or TTS,
+which is where intuition says to look.
 
-## Idiomas além do pt-BR — esforço baixo, ajuda bem-vinda
+## Languages beyond pt-BR — low effort, help welcome
 
-A arquitetura não é específica de português. O que é: o arquivo de persona, o
-`DEFAULT_HINT` do Whisper, o regex de limpeza da palavra de ativação em
-`session.py`, e as abreviações do fatiador de sentenças (`Dr.`, `Sr.`, `etc.`).
+The architecture isn't Portuguese-specific. What is: the persona file, the
+Whisper `DEFAULT_HINT`, the wake word cleanup regex in `session.py`, and the
+sentence chunker abbreviations (`Dr.`, `Sr.`, `etc.`).
 
-Para adicionar um idioma, esses quatro pontos são o trabalho inteiro. O STT
-(Whisper) e o VAD (Silero) já são multilíngues, e Piper tem vozes para dezenas de
-idiomas. Abra uma issue dizendo qual idioma e eu ajudo a mapear os pontos.
+To add a language, these four points are the entire job. STT (Whisper) and VAD
+(Silero) are already multilingual, and Piper has voices for dozens of languages.
+Open an issue saying which language and I'll help map the points.

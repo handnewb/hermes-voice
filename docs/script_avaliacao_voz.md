@@ -1,125 +1,129 @@
-# Script de avaliação de voz — registro Hermes/mordomo (pt-BR)
+# Voice evaluation script — Hermes/butler register (pt-BR)
 
-Texto original, escrito para este projeto. Não é diálogo transcrito de filme, o
-que significa que você pode usar comercialmente, publicar comparativos e mandar
-para fornecedor sem passivo.
+Original text, written for this project. Not a transcribed movie dialog, which
+means you can use it commercially, publish comparisons, and send it to a vendor
+without liability.
 
-**Como usar.** Cole `script_avaliacao_voz.txt` (versão sem anotação) no
-ElevenLabs, Azure Speech Studio ou Piper e gere com cada voz candidata. Ouça na
-ordem. Depois ouça só o bloco 6 de cada candidato em sequência — é onde as vozes
-ruins se revelam.
+**How to use.** Paste `script_avaliacao_voz.txt` (unannotated version) into
+ElevenLabs, Azure Speech Studio, or Piper and generate with each candidate voice.
+Listen in order. Then listen to just block 6 of each candidate in sequence — that's
+where bad voices reveal themselves.
 
-**O que cada bloco testa** está anotado abaixo. Não cole os títulos: o TTS lê.
-
----
-
-## Bloco 1 — Abertura e ironia seca
-
-Testa: registro base, naturalidade em frase curta, ritmo de humor contido. Se a
-voz soar entusiasmada aqui, descarte.
-
-> Bom dia, senhor. São seis e quarenta e dois. O senhor dormiu quatro horas e
-> dezenove minutos. Eu registrei o número, mas não vou comentá-lo.
-
-## Bloco 2 — Relatório com números falados
-
-Testa: números longos por extenso, que é o que a persona realmente produz.
-Cadência de enumeração sem soar como lista.
-
-> Durante a noite o centro de operações processou cento e quarenta e sete mil
-> eventos. Três foram escalados e nenhum exigiu sua atenção. O restante fechou
-> sozinho, como deveria.
-
-## Bloco 3 — Números crus, siglas e estrangeirismos
-
-Testa: o normalizador do TTS, não a persona. Se o modelo falhar aqui, você sabe
-que precisa pré-normalizar no código antes de sintetizar.
-
-> Relatório de conformidade: a ISO 27001 exige revisão anual, a LGPD não fixa
-> prazo, e o certificado vence em 03/12/2026. O dashboard mostra 99,7% de
-> disponibilidade. O playbook de firewall rodou 1.482 vezes.
-
-## Bloco 4 — Cobertura fonética
-
-Testa: nasais (ã, õ, ãe), dígrafos lh e nh, r em posição inicial, medial e
-travada, sândi de sibilante. É o bloco mais chato de ouvir e o mais diagnóstico.
-
-> Amanhã de manhã o trabalho inclui três reuniões, uma conferência e o relatório
-> do conselho. As informações já estão organizadas. Não haverá exceções, e o
-> senhor não perguntou, mas eu responderia que também não haverá atrasos.
-
-## Bloco 5 — Alerta e urgência contida
-
-Testa: se a voz consegue soar urgente sem levantar o tom. Jarvis nunca grita.
-
-> Senhor, temos uma anomalia. A estação nove-quatro-dois abriu conexão com um
-> domínio registrado há dezoito horas. Isolei preventivamente. O senhor pode
-> reverter, mas eu não recomendaria.
-
-## Bloco 6 — Frase longa e subordinada
-
-Testa: consistência de prosódia sob carga, controle de respiração, se a voz
-degrada no fim. É aqui que TTS mediano se desmonta.
-
-> O senhor me perguntou ontem se a automação do fluxo de identidade poderia
-> operar sem aprovação humana nos casos padrão, e a resposta continua sendo que
-> pode, desde que a política permaneça com quem tem autoridade para respondê-la,
-> e não comigo, porque a distinção entre operar e governar é a única coisa que
-> impede este arranjo de se tornar um problema seu.
-
-## Bloco 7 — Confirmação de ação destrutiva
-
-Testa: peso e pausa. Precisa soar como freio, não como formalidade.
-
-> Antes de prosseguir. Isso vai revogar as credenciais de quatrocentos e doze
-> usuários, e é irreversível. Preciso da sua confirmação em voz alta.
-
-## Bloco 8 — Recusa
-
-Testa: firmeza sem hostilidade. A voz precisa conseguir dizer não.
-
-> Não, senhor. Eu não leio segredo em voz alta, nem quando o senhor pede. O ar
-> desta sala não tem controle de acesso.
-
-## Bloco 9 — Incerteza
-
-Testa: naturalidade em frase curta e reta, sem hesitação artificial.
-
-> Não sei, senhor. Posso apurar, mas não vou inventar para preencher o silêncio.
-
-## Bloco 10 — Perguntas e entonação
-
-Testa: contorno interrogativo, que é onde vozes sintéticas soam mais falsas.
-Ouça as três em sequência.
-
-> Detalho? O senhor quer que eu prossiga? Devo isolar a máquina agora?
-
-## Bloco 11 — Encerramento
-
-Testa: cadência descendente, fechamento. Deve soar como fim, não como corte.
-
-> Boa noite, senhor. Vou reduzir a iluminação e continuar monitorando. Se algo
-> mudar, o senhor será o primeiro a saber. E se nada mudar, eu não o acordarei
-> para dizer isso.
+**What each block tests** is annotated below. Don't paste the titles: the TTS
+reads.
 
 ---
 
-## Critérios de julgamento
+## Block 1 — Opening and dry irony
 
-Ouça na ordem e pontue de um a cinco. Descarte a candidata que falhar em
-qualquer um dos três primeiros — os outros são refináveis, esses não.
+Tests: base register, naturalness in short sentences, restrained humor rhythm. If
+the voice sounds enthusiastic here, discard it.
 
-1. **Não soa animada.** Eliminatório. A maioria das vozes comerciais de pt-BR é
-   treinada para atendimento e vem com sorriso embutido.
-2. **Aguenta o bloco 6 sem degradar.** Eliminatório.
-3. **Consegue dizer não (bloco 8) sem soar agressiva nem submissa.** Eliminatório.
-4. Nasais do bloco 4 limpas, sem metalizar.
-5. Bloco 3 normalizado corretamente, ou pelo menos de forma previsível.
-6. Perguntas do bloco 10 com contorno crível.
-7. Consistência de timbre entre bloco 1 e bloco 11.
+> Good morning, sir. It's six forty-two. You slept four hours and nineteen
+> minutes. I noted the number, but I won't comment on it.
 
-## Depois de escolher
+## Block 2 — Report with spoken numbers
 
-O timbre é metade. A outra metade é o processamento — corte de graves, compressão
-e um toque de reverb de sala é o que faz a voz soar como presença no ambiente em
-vez de locução. Nenhum TTS entrega isso de fábrica. Ver `docs/ROADMAP.md`.
+Tests: long numbers spelled out, which is what the persona actually produces.
+Enumeration cadence without sounding like a list.
+
+> Overnight the operations center processed one hundred forty-seven thousand
+> events. Three were escalated and none required your attention. The rest closed
+> on their own, as they should.
+
+## Block 3 — Raw numbers, acronyms, and foreignisms
+
+Tests: the TTS normalizer, not the persona. If the model fails here, you know you
+need to pre-normalize in code before synthesizing.
+
+> Compliance report: ISO 27001 requires annual review, LGPD sets no deadline, and
+> the certificate expires on 12/03/2026. The dashboard shows 99.7% availability.
+> The firewall playbook ran 1,482 times.
+
+## Block 4 — Phonetic coverage
+
+Tests: nasals (ã, õ, ãe), digraphs lh and nh, r in initial, medial, and coda
+positions, sibilant sandhi. It's the most annoying block to listen to and the most
+diagnostic.
+
+> Tomorrow morning the work includes three meetings, a conference, and the board
+> report. The information is already organized. There will be no exceptions, and
+> you didn't ask, but I would answer that there will also be no delays.
+
+## Block 5 — Alert and restrained urgency
+
+Tests: whether the voice can sound urgent without raising pitch. Jarvis never
+shouts.
+
+> Sir, we have an anomaly. Station nine-four-two opened a connection to a domain
+> registered eighteen hours ago. I preemptively isolated it. You can revert, but I
+> wouldn't recommend it.
+
+## Block 6 — Long subordinate sentence
+
+Tests: prosody consistency under load, breath control, whether the voice degrades
+at the end. This is where mediocre TTS falls apart.
+
+> You asked me yesterday whether the identity flow automation could operate
+> without human approval in standard cases, and the answer remains that it can, as
+> long as the policy stays with whoever has the authority to answer for it, and
+> not with me, because the distinction between operating and governing is the only
+> thing that prevents this arrangement from becoming your problem.
+
+## Block 7 — Confirmation of destructive action
+
+Tests: weight and pause. Must sound like a brake, not a formality.
+
+> Before proceeding. This will revoke the credentials of four hundred twelve
+> users, and it is irreversible. I need your confirmation aloud.
+
+## Block 8 — Refusal
+
+Tests: firmness without hostility. The voice needs to be able to say no.
+
+> No, sir. I don't read secrets aloud, even when you ask. The air in this room has
+> no access control.
+
+## Block 9 — Uncertainty
+
+Tests: naturalness in a short, straight sentence, without artificial hesitation.
+
+> I don't know, sir. I can look into it, but I won't invent to fill the silence.
+
+## Block 10 — Questions and intonation
+
+Tests: interrogative contour, which is where synthetic voices sound most fake.
+Listen to all three in sequence.
+
+> Detail? Do you want me to continue? Should I isolate the machine now?
+
+## Block 11 — Closing
+
+Tests: descending cadence, closure. Should sound like an end, not a cutoff.
+
+> Good night, sir. I'll dim the lights and continue monitoring. If anything
+> changes, you'll be the first to know. And if nothing changes, I won't wake you
+> to say so.
+
+---
+
+## Judgment criteria
+
+Listen in order and score from one to five. Discard any candidate that fails any
+of the first three — the others are refinable, these aren't.
+
+1. **Doesn't sound cheerful.** Eliminatory. Most commercial pt-BR voices are
+   trained for customer service and come with a built-in smile.
+2. **Handles block 6 without degrading.** Eliminatory.
+3. **Can say no (block 8) without sounding aggressive or submissive.**
+   Eliminatory.
+4. Block 4 nasals clean, without metallic quality.
+5. Block 3 normalized correctly, or at least predictably.
+6. Block 10 questions with credible contour.
+7. Timbre consistency between block 1 and block 11.
+
+## After choosing
+
+Timbre is half. The other half is processing — bass cut, compression, and a touch
+of room reverb is what makes the voice sound like presence in the space rather than
+voice-over. No TTS ships this out of the box. See `docs/ROADMAP.md`.

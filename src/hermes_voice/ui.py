@@ -1,7 +1,7 @@
-"""Cores de terminal, com desligamento automatico quando nao ha TTY.
+"""Terminal colors, with automatic disable when there's no TTY.
 
-Existe para que a saida redirecionada para arquivo ou pipe (log de CI, relatorio
-de bug) nao venha cheia de escape ANSI.
+Exists so that output redirected to a file or pipe (CI log, bug report) doesn't
+come full of ANSI escapes.
 """
 
 from __future__ import annotations

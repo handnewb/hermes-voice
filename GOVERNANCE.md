@@ -1,177 +1,175 @@
-# Governança
+# Governance
 
-Como decisões são tomadas, quem pode fazer o quê, e quando cada camada de
-processo entra.
+How decisions are made, who can do what, and when each layer of process kicks in.
 
-## O princípio
+## The principle
 
-**Processo se adiciona quando a dor aparece, não antes.**
+**Process is added when pain appears, not before.**
 
-Projeto com um mantenedor e zero contribuidores que exige duas aprovações e três
-revisores é teatro: o mantenedor aprova a si mesmo, o ritual não pega nada, e o
-primeiro contribuidor desiste na terceira rodada de burocracia. Isso é engessar
-sem ganhar robustez.
+A project with one maintainer and zero contributors that requires two approvals and
+three reviewers is theater: the maintainer approves themselves, the ritual catches
+nothing, and the first contributor gives up on the third round of bureaucracy. This
+is stiffening without gaining robustness.
 
-Por outro lado, projeto que grava áudio e baixa modelos precisa de trilho real
-onde importa. A solução não é escolher entre robusto e leve — é ser rígido num
-conjunto pequeno de caminhos e frouxo no resto.
+On the other hand, a project that records audio and downloads models needs real
+guardrails where it matters. The solution isn't choosing between robust and lean —
+it's being strict on a small set of paths and loose on the rest.
 
-Este documento é organizado por **estágio**. Cada estágio lista o que vale agora e
-o gatilho que abre o próximo. Não pule etapas por antecipação.
-
----
-
-## Estágio atual: 0 — um mantenedor
-
-O que vale hoje.
-
-**Tudo passa por pull request, inclusive do mantenedor.** Não por cerimônia: é o
-que garante que o CI roda sempre e que o histórico fica revisável. Push direto na
-`main` está bloqueado.
-
-**Sem exigência de aprovação.** Com uma pessoa, aprovação é auto-aprovação. O que
-protege é o CI verde, não a assinatura.
-
-**Merge por squash, sempre.** Um commit por mudança na `main`, mensagem
-descritiva, `git bisect` utilizável. Merge commit e rebase estão desligados.
-
-**Gate obrigatório:** `lint` e `build` verdes. Falha em qualquer um bloqueia.
-
-### Gatilho para o estágio 1
-
-Duas pessoas além do mantenedor com pull request aceito, ou a primeira
-contribuição que toca caminho protegido.
+This document is organized by **stage**. Each stage lists what holds now and the
+trigger that opens the next one. Don't skip stages out of anticipation.
 
 ---
 
-## Estágio 1 — contribuidores recorrentes
+## Current stage: 0 — one maintainer
 
-Adiciona:
+What holds today.
 
-- **Uma aprovação obrigatória**, de alguém que não é o autor.
-- **`CODEOWNERS` ativo** nos caminhos protegidos (lista abaixo).
-- **Papel Triage** para quem contribui com frequência — não Write.
-- **Aprovação manual de CI para primeira contribuição** de conta nova. É a defesa
-  contra workflow malicioso vindo de fork.
+**Everything goes through a pull request, including from the maintainer.** Not out
+of ceremony: it's what ensures CI always runs and the history stays reviewable.
+Direct push to `main` is blocked.
 
-### Gatilho para o estágio 2
+**No approval requirement.** With one person, approval is self-approval. What
+protects is green CI, not a signature.
 
-Um segundo mantenedor com direito de merge, ou volume de issues que uma pessoa não
-triaga em 48 h.
+**Squash merge, always.** One commit per change on `main`, descriptive message,
+usable `git bisect`. Merge commit and rebase are disabled.
 
----
+**Mandatory gate:** green `lint` and `build`. Failure in either blocks.
 
-## Estágio 2 — mais de um mantenedor
+### Trigger for stage 1
 
-Adiciona:
-
-- `MAINTAINERS.md` com nomes, áreas e fuso.
-- **Duas aprovações** para caminhos protegidos; uma para o resto.
-- Rotação de release, para não haver dependência de uma pessoa só.
-- Decisão por consenso simples; empate persistente fica com quem mantém há mais
-  tempo. Registrada na issue, não em conversa privada.
+Two people besides the maintainer with an accepted pull request, or the first
+contribution touching a protected path.
 
 ---
 
-## Papéis no GitHub, e o que cada um pode fazer
+## Stage 1 — recurring contributors
 
-Concessão de permissão é irreversível na prática: retirar acesso de alguém é
-socialmente caro, então conceda devagar.
+Adds:
 
-| Papel | Pode | Quando conceder |
+- **One mandatory approval**, from someone who isn't the author.
+- **Active `CODEOWNERS`** on protected paths (list below).
+- **Triage role** for frequent contributors — not Write.
+- **Manual CI approval for first contribution** from a new account. This is the
+  defense against malicious workflow from a fork.
+
+### Trigger for stage 2
+
+A second maintainer with merge rights, or an issue volume one person can't triage
+in 48 h.
+
+---
+
+## Stage 2 — more than one maintainer
+
+Adds:
+
+- `MAINTAINERS.md` with names, areas, and timezone.
+- **Two approvals** for protected paths; one for the rest.
+- Release rotation, so there's no single-person dependency.
+- Decision by simple consensus; persistent deadlock goes to whoever has maintained
+  the longest. Recorded in the issue, not in private conversation.
+
+---
+
+## GitHub roles, and what each can do
+
+Permission grants are irreversible in practice: removing someone's access is
+socially expensive, so grant slowly.
+
+| Role | Can | When to grant |
 |---|---|---|
-| **Read** (público) | Fork, pull request, issue, discussion | Automático. É o suficiente para contribuir. |
-| **Triage** | Rotular, fechar e atribuir issue; sem escrever código | Após 1–2 PRs aceitos. Baixo risco, alívio real. É o papel mais subutilizado do GitHub. |
-| **Write** | Push em branch, merge de PR | Após 3+ PRs aceitos, incluindo um em caminho protegido. Só com histórico. |
-| **Maintain** | Configurações não sensíveis | Segundo mantenedor de fato. |
-| **Admin** | Tudo, inclusive apagar o repositório | Só o dono. |
+| **Read** (public) | Fork, pull request, issue, discussion | Automatic. Enough to contribute. |
+| **Triage** | Label, close, and assign issues; no code write | After 1–2 accepted PRs. Low risk, real relief. GitHub's most underused role. |
+| **Write** | Push to branch, merge PR | After 3+ accepted PRs, including one on a protected path. Only with history. |
+| **Maintain** | Non-sensitive settings | De facto second maintainer. |
+| **Admin** | Everything, including deleting the repository | Only the owner. |
 
-**Contribuir não exige nenhuma permissão.** Fork mais pull request cobre 100% dos
-casos, e é assim que deve ser: quem chega não precisa pedir acesso, precisa abrir
-um PR.
+**Contributing requires no permission.** Fork plus pull request covers 100% of
+cases, and that's how it should be: newcomers don't need to ask for access — they
+need to open a PR.
 
 ---
 
-## Caminhos protegidos
+## Protected paths
 
-Estes exigem revisão mais atenta, e no estágio 1 entram no `CODEOWNERS`. Não é
-sobre confiança na pessoa — é sobre o que a mudança pode causar.
+These require closer review, and in stage 1 enter `CODEOWNERS`. It's not about
+trust in the person — it's about what the change can cause.
 
-| Caminho | Por quê |
+| Path | Why |
 |---|---|
-| `src/hermes_voice/session.py` | Contém as três garantias de privacidade. Mudança aqui pode fazer o projeto transcrever o que não devia, sem que nada pareça errado. |
-| `src/hermes_voice/audio.py` | Captura de microfone e limites de buffer. |
-| `src/hermes_voice/echo.py` | Buffer de referência do áudio de saída. |
-| `.github/workflows/**` | **Vetor de ataque clássico.** Um workflow alterado pode exfiltrar segredo, publicar release falso ou injetar código no artefato. Trate como o arquivo mais sensível do repositório. |
-| `pyproject.toml` | Dependência nova é decisão de cadeia de suprimentos. |
-| `docs/persona.md`, `src/hermes_voice/data/persona.md` | Define o comportamento do assistente, incluindo confirmar ação destrutiva. |
+| `src/hermes_voice/session.py` | Contains the three privacy guarantees. A change here can make the project transcribe what it shouldn't, without anything appearing wrong. |
+| `src/hermes_voice/audio.py` | Microphone capture and buffer limits. |
+| `src/hermes_voice/echo.py` | Output audio reference buffer. |
+| `.github/workflows/**` | **Classic attack vector.** An altered workflow can exfiltrate secrets, publish a fake release, or inject code into the artifact. Treat as the most sensitive file in the repository. |
+| `pyproject.toml` | A new dependency is a supply chain decision. |
+| `docs/persona.md`, `src/hermes_voice/data/persona.md` | Defines the assistant's behavior, including confirming destructive actions. |
 
-### Regras que não cedem a estágio
+### Rules that don't yield to stage
 
-Independem de quantas pessoas mantêm o projeto:
+Independent of how many people maintain the project:
 
-1. **Nunca `pull_request_target` em workflow.** Esse gatilho dá segredos a código
-   vindo de fork. Se alguém precisar de algo que só ele resolve, a resposta é não.
-2. **Nenhuma dependência nova sem justificativa escrita no PR.** Este projeto grava
-   áudio; o orçamento de confiança é curto.
-3. **Mudança em captura, retenção ou envio de áudio exige issue antes do código.**
-   Ver `CONTRIBUTING.md`.
-4. **Clonagem de voz de pessoa real não entra.** Ver `docs/VOICE_LICENSING.md`.
-5. **Segredo nunca em variável de workflow de PR.** Publicação usa Trusted
-   Publishing por OIDC, sem token no repositório.
-
----
-
-## O que impede o projeto de engessar
-
-Robustez sem atrito exige que as coisas chatas andem sozinhas.
-
-**Dependabot com auto-merge** para patch e minor de ferramenta de desenvolvimento,
-quando o CI passa. Major e dependência de runtime ficam manuais. Sem isso, o
-mantenedor gasta a energia dele em bump de versão em vez de código.
-
-**Um único gate obrigatório: CI verde.** Sem checklist manual, sem aprovação de
-comitê, sem "aguardando revisão de arquitetura".
-
-**Auto-merge disponível para qualquer PR.** Autor marca, e o merge acontece quando
-o CI fecha. Ninguém espera alguém acordar.
-
-**Resposta em 48 h, mesmo que só para dizer que viu.** O que mata contribuição não
-é rejeição, é silêncio.
-
-**Escopo declarado.** `docs/ROADMAP.md` diz o que está no plano e o que não está,
-com estimativa honesta de esforço. Contribuidor que sabe onde ajudar não precisa
-perguntar.
-
-**Rejeição vem com motivo e alternativa.** "Não vai entrar porque X; o que
-resolveria o seu caso é Y."
+1. **Never `pull_request_target` in a workflow.** That trigger gives secrets to
+   code coming from a fork. If someone needs something only it solves, the answer is no.
+2. **No new dependency without written justification in the PR.** This project
+   records audio; the trust budget is tight.
+3. **Changes to audio capture, retention, or transmission require an issue before
+   code.** See `CONTRIBUTING.md`.
+4. **Real-person voice cloning does not enter.** See `docs/VOICE_LICENSING.md`.
+5. **Never a secret in a PR workflow variable.** Publishing uses Trusted Publishing
+   via OIDC, no token in the repository.
 
 ---
 
-## Versionamento e release
+## What prevents the project from stiffening
 
-SemVer. Nesta fase, `main` é sempre publicável e release sai quando há motivo, não
-por calendário.
+Robustness without friction requires the boring things to run on their own.
 
-Quebra de compatibilidade exige: entrada em `CHANGELOG.md` sob `### Alterado`,
-caminho de migração no texto, e bump de major. Variável de ambiente removida
-continua sendo lida por uma minor, com aviso.
+**Dependabot with auto-merge** for patch and minor dev tool updates when CI passes.
+Major and runtime dependencies stay manual. Without this, the maintainer spends
+their energy on version bumps instead of code.
+
+**A single mandatory gate: green CI.** No manual checklist, no committee approval,
+no "awaiting architecture review".
+
+**Auto-merge available for any PR.** Author marks it, and the merge happens when CI
+closes. Nobody waits for someone to wake up.
+
+**Response in 48 h, even if only to say it was seen.** What kills contribution
+isn't rejection — it's silence.
+
+**Declared scope.** `docs/ROADMAP.md` says what's in the plan and what isn't, with
+honest effort estimates. A contributor who knows where to help doesn't need to ask.
+
+**Rejection comes with a reason and an alternative.** "This won't go in because X;
+what would solve your case is Y."
 
 ---
 
-## Como virar mantenedor
+## Versioning and release
 
-Não há formulário. O caminho é o normal: contribuições consistentes, revisão útil
-em PR de outras pessoas, e disposição a manter o que você escreveu. Convite parte
-de quem já mantém, e é registrado em issue pública.
+SemVer. In this phase, `main` is always publishable and a release goes out when
+there's a reason, not on a calendar.
 
-Sair também é normal e não é abandono. Abra issue, e a linha em `MAINTAINERS.md`
-sai. Preferível a manter nome de quem não responde mais — isso engana quem confia
-no projeto.
+Breaking changes require: an entry in `CHANGELOG.md` under `### Changed`, a
+migration path in the text, and a major bump. A removed environment variable
+continues to be read for one minor version, with a warning.
 
 ---
 
-## Conduta
+## How to become a maintainer
 
-[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), Contributor Covenant 2.1, sem
-alterações. Relato por advisory privado.
+There's no form. The path is the normal one: consistent contributions, useful
+review on other people's PRs, and willingness to maintain what you wrote. The
+invitation comes from whoever already maintains, and is recorded in a public issue.
+
+Leaving is also normal and isn't abandonment. Open an issue, and the line in
+`MAINTAINERS.md` comes out. Preferable to keeping the name of someone who no longer
+responds — that misleads those who trust the project.
+
+---
+
+## Conduct
+
+[`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md), Contributor Covenant 2.1, unmodified.
+Reporting via private advisory.
