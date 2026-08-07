@@ -3,40 +3,29 @@
 Formato baseado em [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/).
 Versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
-## [Não publicado]
+## [1.0.1] — 2026-08-07
 
-### Alterado — sem dependência de serviço externo
+### Corrigido
 
-- **Removidos ElevenLabs e Azure Speech.** O projeto passa a ser inteiramente
-  local: nenhuma chave de API, nenhum cadastro, nenhum egress em execução além
-  do próprio endpoint do Hermes. `Config.SECRET_FIELDS` tem um único item.
-- **Porcupine substituído por openWakeWord** (Apache-2.0, sem conta). Custo
-  documentado: exige "ei jarvis" em vez de "jarvis", e erra mais.
-- **Catálogo de vozes** com cinco opções pt-BR gratuitas e licença que permite
-  uso comercial, instaláveis com `hermes-voice voices --install`.
+- **Backend `auto` no Windows:** prefere `piper-binary` antes de `kokoro`
+  porque o espeak-ng frequentemente não tem dados do idioma, e `piper-python`
+  não compila em Windows. Antes o `auto` tentava Kokoro → piper-python →
+  piper-binary, e as duas primeiras falhavam silenciosamente.
+- **Lint:** imports `os` e `pathlib.Path` fora de lugar em `tts/__init__.py`.
 
-### Adicionado — fluidez
+### Verificado
 
-- **Endpointing adaptativo** (`endpoint.py`): em vez de limiar fixo de silêncio,
-  transcreve num limiar curto e avalia se a frase parece sintaticamente
-  completa. "eu quero" espera; "qual o status?" responde. Se o texto não cresce
-  entre sondagens, encerra de todo modo.
-- **Normalização pt-BR** (`normalize.py`): números, moeda, datas, horas,
-  percentuais, ordinais, abreviações e siglas por extenso antes de sintetizar.
-- **Supressão de eco** (`echo.py`): barge-in real com `HALF_DUPLEX=0`, só numpy.
-  Verifica se algum alinhamento da referência explica a energia do microfone.
-  Zero falsos positivos em atrasos de 20–300 ms e ganhos de sala de 0,25–1,3.
-- **Backend Kokoro-82M** via `kokoro-onnx`, pesos Apache-2.0, sem PyTorch.
+- **Jarvis** (Windows 11, RTX 4060, Python 3.13): 229 testes ✅, lint ✅,
+  doctor 8/8 ✅, GPU CUDA ✅, 11 microfones ✅, Piper binary TTS ✅, DSP
+  room ✅, endpoint HTTP 200 ✅, pipeline completo LLM+TTS+DSP a 1573ms.
+- **Mestre** (Linux 6.8, Python 3.11): 229 testes ✅, lint ✅, format ✅.
 
-### Segurança
+### Conhecido
 
-- `docs/VOICE_LICENSING.md`: direitos de personalidade, direito conexo do
-  intérprete, voz como dado biométrico, e os caminhos limpos para um timbre
-  específico. Escrito para a pessoa decidir informada.
-- XTTS-v2 fora do caminho padrão: pesos non-commercial não cobertos pela licença
-  Apache-2.0 do repositório.
-- Persona empacotada no wheel, para existir numa instalação por pip sem que o
-  projeto escreva dentro de `site-packages`.
+- Kokoro + espeak-ng no Windows: `TTS_BACKEND=piper-binary`.
+- Wake word e microfone aberto não testados via SSH remoto.
+
+---
 
 ## [1.0.0] — 2026-08-06
 

@@ -7,6 +7,7 @@ em tempo de execucao, nenhuma chave de API, nenhum cadastro.
 from __future__ import annotations
 
 import logging
+import os
 from collections.abc import Iterator
 from typing import TYPE_CHECKING, Protocol
 
@@ -16,6 +17,13 @@ if TYPE_CHECKING:
     from .speaker import Speaker
 
 log = logging.getLogger("hermes.tts")
+
+# Ordem do 'auto': piper-binary antes de kokoro no Windows porque o espeak-ng
+# frequentemente nao tem dados do idioma, e piper-python nao compila.
+if os.name == "nt":
+    BACKENDS = ("piper-binary", "kokoro", "piper-python")
+else:
+    BACKENDS = ("kokoro", "piper-python", "piper-binary")
 
 __all__ = [
     "BACKENDS",
@@ -27,16 +35,6 @@ __all__ = [
     "build_dsp",
     "build_speaker",
 ]
-
-import os
-from pathlib import Path
-
-# Ordem do 'auto': piper-binary antes de kokoro no Windows porque o espeak-ng
-# frequentemente nao tem dados do idioma, e piper-python nao compila.
-if os.name == "nt":
-    BACKENDS = ("piper-binary", "kokoro", "piper-python")
-else:
-    BACKENDS = ("kokoro", "piper-python", "piper-binary")
 
 
 class Backend(Protocol):

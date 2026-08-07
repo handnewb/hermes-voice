@@ -51,6 +51,16 @@ chave de API.
 | **Latência** | 1670ms até primeiro áudio (LLM + TTS) |
 | **Pipeline completo** | `--text` com LLM + Piper binary TTS + DSP → funcional |
 
+### Mestre — Linux 6.8, Python 3.11.15, sem GPU
+
+| Componente | Resultado |
+|---|---|
+| **Tests** | 229/229 passed em 4.13s |
+| **Ruff lint** | All checks passed |
+| **Ruff format** | 48 files already formatted |
+| **Doctor** | 4 bloqueios esperados (PortAudio, CUDA, wake, vozes — VPS headless) |
+| **Build** | sdist + wheel gerados sem erro |
+
 ### Gaps encontrados
 
 | Gap | Detalhe | Workaround |
