@@ -159,8 +159,7 @@ def fetch_piper_index(root: Path, refresh: bool = False) -> dict:
             log.warning("Index unreachable (%s); using old cache.", exc)
             return json.loads(cache.read_text(encoding="utf-8"))
         raise DownloadError(
-            f"Could not fetch voice index ({exc}). "
-            "Check your connection; no account is required."
+            f"Could not fetch voice index ({exc}). Check your connection; no account is required."
         ) from exc
 
     cache.parent.mkdir(parents=True, exist_ok=True)

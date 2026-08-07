@@ -43,7 +43,8 @@ class Transcriber:
                 raise
             log.warning(
                 "Failed to start Whisper on %s (%s). Falling back to CPU int8.",
-                device, exc,
+                device,
+                exc,
             )
             self._model = WhisperModel(model, device="cpu", compute_type="int8")
             self.device = "cpu"

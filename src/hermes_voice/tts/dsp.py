@@ -1,4 +1,4 @@
-""""Presence" stage: makes the voice sound like room sound, not narration.
+""" "Presence" stage: makes the voice sound like room sound, not narration.
 
 Much of what people identify as a sci-fi assistant voice isn't in the timbre --
 it's in the processing. Speech is treated as coming from speakers in a room,

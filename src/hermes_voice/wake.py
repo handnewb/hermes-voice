@@ -270,9 +270,7 @@ def build_wake(cfg) -> WakeBackend | None:
     if want == "open":
         return AlwaysOpen()
     if want == "keyword":
-        words = tuple(
-            w for w in (cfg.wake_words or "").replace(";", ",").split(",") if w.strip()
-        )
+        words = tuple(w for w in (cfg.wake_words or "").replace(";", ",").split(",") if w.strip())
         return KeywordSpotter(
             words or ("jarvis",),
             cfg.wake_keyword_model,
