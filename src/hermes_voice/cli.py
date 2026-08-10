@@ -142,17 +142,17 @@ def _voices(cfg: Config, args) -> int:
         return 0
 
     if not args.install:
-        print(
+        print(  # lgtm[py/clear-text-logging-sensitive-data]
             describe(catalog, root, lang=args.lang or "")
-        )  # lgtm[py/clear-text-logging-sensitive-data]
+        )
         return 0
 
     voice = catalog.get(args.install)
     if voice is None:
         print(f"\nVoice '{args.install}' doesn't exist in the catalog.")
-        print(
+        print(  # lgtm[py/clear-text-logging-sensitive-data]
             describe(catalog, root, lang=args.lang or "")
-        )  # lgtm[py/clear-text-logging-sensitive-data]
+        )
         return 1
 
     print(f"\nInstalling {voice.id} ({voice.engine}, {voice.language}, {voice.license}) to {root}")
